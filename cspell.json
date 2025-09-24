@@ -1,0 +1,28 @@
+{
+  "version": "0.2",
+  "language": "ja,en",
+  "useGitignore": true,
+  "dictionaries": [
+    "project-words"
+  ],
+  "dictionaryDefinitions": [
+    {
+      "name": "project-words",
+      "path": "./.cspell/project-words.txt",
+      "addWords": true
+    }
+  ],
+  "ignorePaths": [
+    "**/node_modules/**",
+    "**/.git/**",
+    "**/.cursor/**",
+    "**/*.pdf",
+    "**/*.png",
+    "**/*.jpg",
+    "**/*.jpeg",
+    "**/*.svg",
+    "**/*.ico",
+    "**/dist/**",
+    "**/build/**"
+  ]
+}

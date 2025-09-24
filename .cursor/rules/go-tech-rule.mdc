@@ -1,0 +1,11 @@
+---
+description: Go-Tech文書の作成・運用ルール
+globs:
+alwaysApply: true
+---
+
+# Go-Tech文書の作成・運用ルール
+
+## Rules
+
+- Markdownを作成・更新する際は、markdownlintのメッセージを必ず解消する。
