@@ -11,6 +11,20 @@
   - PaDiM / PatchCore / SimpleNet / EfficientAD / SAA+ / GLASS
 - 追加候補（本調査で含める）
   - RD++、STFPM、RegAD、CFlow-AD、FastFlow、DRAEM、CutPaste、VisionAD、Diffusion系（AnoDDPM / DiffusionAD）、WinCLIP、PromptAD、SPADE、CFA/CFA+
+- 再追加候補（本調査で含める）
+  - RD4AD
+    ```
+    5. SOTAs / 代表モデル
+    現在、産業用画像異常検知でよく比較対象になる代表モデルは以下です：
+      - PaDiM (Patch Distribution Modeling)
+      - PatchCore
+      - CFA / CFlow (Flow-based)
+      - FastFlow
+      - SimpleNet
+      - EfficientAD
+      - RD4AD
+        これらは上記ベンチマークで一貫して評価されており、半導体外観検査でも応用されています。
+    ```
 
 ## 3. 調査ソース
 
