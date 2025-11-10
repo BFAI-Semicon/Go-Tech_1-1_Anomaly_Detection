@@ -28,11 +28,13 @@ EfficientAD
 Elsevier
 FastFlow
 Francesco
+GANomaly
 gfortran
 Gian
 GLASS
 Go-Tech
 Hütten
+hypersphere
 ICCV
 inpainting
 ipython
@@ -71,6 +73,7 @@ RegAD
 researchdata
 ResNet
 Retinex
+RIAD
 SAA+
 Schlosser
 scikit
