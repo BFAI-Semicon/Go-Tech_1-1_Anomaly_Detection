@@ -13,7 +13,8 @@
   - RD++、STFPM、RegAD、CFlow-AD、FastFlow、DRAEM、CutPaste、VisionAD、Diffusion系（AnoDDPM / DiffusionAD）、WinCLIP、PromptAD、SPADE、CFA/CFA+
 - 再追加候補（本調査で含める）
   - RD4AD
-    ```
+
+    ```text
     5. SOTAs / 代表モデル
     現在、産業用画像異常検知でよく比較対象になる代表モデルは以下です：
       - PaDiM (Patch Distribution Modeling)
