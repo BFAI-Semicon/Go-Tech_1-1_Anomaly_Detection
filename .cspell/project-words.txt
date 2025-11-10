@@ -3,6 +3,7 @@ AnoDDPM
 AUPR
 AUROC
 Barusco
+Borsatti
 BTAD
 CFA
 CFA+
@@ -14,7 +15,9 @@ csholmq
 CUDA
 CutPaste
 CVPR
+Dalle
 davidanson
+Davide
 DeepPCB
 devcontainers
 Dice
@@ -24,11 +27,14 @@ eamodio
 EfficientAD
 Elsevier
 FastFlow
+Francesco
 gfortran
+Gian
 GLASS
 Go-Tech
 Hütten
 ICCV
+inpainting
 ipython
 isort
 libamd
@@ -44,6 +50,7 @@ marp
 matplotlib
 MDPI
 mhutchie
+MIIC
 mIoU
 MLflow
 MVTec
@@ -52,6 +59,7 @@ Neur
 ONNX
 PaDiM
 PatchCore
+Pezze
 plotly
 PRO
 PromptAD
@@ -60,6 +68,7 @@ pytest
 RD++
 Real-IAD
 RegAD
+researchdata
 ResNet
 Retinex
 SAA+
@@ -70,6 +79,7 @@ SimpleNet
 SPADE
 sPRO
 STFPM
+Susto
 takumii
 TensorRT
 toolsai
@@ -78,6 +88,8 @@ VisionAD
 ViT
 WACV
 wandb
+wenbihan
 WinCLIP
 Xplore
+Youssef
 yzhang
