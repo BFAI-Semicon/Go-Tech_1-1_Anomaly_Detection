@@ -52,8 +52,12 @@
 	},
 
 	// Use 'postCreateCommand' to run commands after the container is created.
-	"postCreateCommand": "pip3 install -r requirements.txt"
+	"postCreateCommand": "pip3 install -r requirements.txt",
 
 	// Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
-	// "remoteUser": "root"
+	"remoteUser": "vscode",
+	"mounts": [
+		"source=${localEnv:HOME}/.ssh,target=/home/vscode/.ssh,type=bind,readonly"
+	],
+	"postStartCommand": "mkdir -p ~/.ssh && ssh-keyscan github.com >> ~/.ssh/known_hosts || true"
 }
