@@ -8,5 +8,8 @@
     ],
     "cSpell.dictionaries": [
         "project-words"
-    ]
+    ],
+    "files.insertFinalNewline": true,
+    "files.trimFinalNewlines": true,
+    "files.eol": "\n"
 }
