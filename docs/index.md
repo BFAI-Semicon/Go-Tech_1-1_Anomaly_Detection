@@ -6,5 +6,5 @@
 
 ### 文献調査
 
-1. [半導体製造における異常検知手法 文献調査結果](../survey_results.md)
-2. [半導体製造における自動外観検査](../Survey/Papers/4papers_for_semicon_industry.md)
+1. [半導体製造における異常検知手法 文献調査結果](./Survey/Papers/survey_results.md)
+2. [半導体製造における自動外観検査](./Survey/Papers/4papers_for_semicon_industry.md)
