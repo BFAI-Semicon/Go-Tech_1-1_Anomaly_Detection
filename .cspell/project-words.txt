@@ -1,5 +1,6 @@
 alisson
 AnoDDPM
+anomalib
 AUPR
 AUROC
 Barusco
@@ -11,6 +12,7 @@ CFlow
 CFlow-AD
 ckpt
 CLAHE
+Codabench
 csholmq
 CUDA
 CutPaste
@@ -26,6 +28,7 @@ DRAEM
 eamodio
 EfficientAD
 Elsevier
+etal
 FastFlow
 Francesco
 GANomaly
@@ -58,6 +61,7 @@ MLflow
 MVTec
 mypy
 Neur
+Omniboard
 ONNX
 PaDiM
 PatchCore
