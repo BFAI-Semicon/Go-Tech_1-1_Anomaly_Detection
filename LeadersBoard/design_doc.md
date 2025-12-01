@@ -37,6 +37,7 @@
 - **EvalAI**  
   - 画像分類/セグメンテーション系の評価スクリプトを自作して登録すれば、PRO/ROC/F1 を公式LBに掲載可能。外部参加も受け付けられる。  
   - 参考: [EvalAI](https://github.com/Cloud-CV/EvalAI)
+  - 参考: [データを外部にアップできなくてもコンペを開催したい！を実現できるEvalAIの紹介](https://qiita.com/fufufukakaka/items/fa47cd2be320db541339)
 - **CodaLab（Codabench系）**  
   - 研究コミュニティで広く使われる自前ホスト型。評価ワーカーで任意指標を実装可。  
   - 参考: [Codabench](https://github.com/codalab/codabench)
