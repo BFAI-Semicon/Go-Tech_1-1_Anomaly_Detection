@@ -42,6 +42,7 @@ ICCV
 inpainting
 ipython
 isort
+kiro
 libamd
 libcholmod
 liblapack
