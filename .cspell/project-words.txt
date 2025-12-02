@@ -86,6 +86,7 @@ SimpleNet
 SPADE
 sPRO
 STFPM
+Streamlit
 Susto
 takumii
 TensorRT
