@@ -32,6 +32,7 @@ eamodio
 EfficientAD
 Elsevier
 etal
+fakeredis
 fastapi
 FastFlow
 Francesco
@@ -50,6 +51,7 @@ ipython
 isort
 kiro
 kwargs
+Lflow
 libamd
 libcholmod
 liblapack
@@ -58,6 +60,7 @@ libnauty
 libopencv
 libsuitesparse
 LOCO
+locustfile
 LPUSH
 markdowntabl
 marp
@@ -80,6 +83,7 @@ PRO
 PromptAD
 Pydantic
 pylance
+pyproject
 pytest
 RD++
 Real-IAD
@@ -102,6 +106,7 @@ takumii
 TensorRT
 tmpfs
 toolsai
+uvicorn
 VisA
 VisionAD
 ViT
