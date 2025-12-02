@@ -41,14 +41,24 @@
 - 認証: APIトークン（固定発行）またはOIDCトークン検証
 - バリデーション: ファイルサイズ上限、拡張子チェック、CORS設定
 - レート制限: 1ユーザーあたり提出回数・同時実行数の上限
+- 投稿ファイル構造（規約）:
+  - `main.py`: エントリポイント（デフォルト、カスタマイズ可能）
+  - `config.yaml`: ハイパーパラメータ設定（デフォルト、カスタマイズ可能）
+  - `requirements.txt`: 依存関係（任意）
+  - `src/`: 追加Pythonコード（任意）
+  - `data/`: カスタムデータ（任意）
+- エントリポイント指定: 投稿時に `entrypoint` と `config_file` をメタデータで指定可能（省略時はデフォルト）
+- パス検証: パストラバーサル防止（`..`, `/` 禁止）、拡張子チェック（`.py` のみ）
 
 ### ジョブ実行
 
 - `POST /jobs`: 提出IDと実行設定を指定し、Redisキューへ投入
 - 冪等化: `job_id` による重複投入の無害化
-- ワーカー: Redisキューをブロッキング取得（`BRPOP` または `XREADGROUP BLOCK`）し、GPUコンテナでanomalib学習・評価を実行
-- MLflow記録: `MLFLOW_TRACKING_URI` 経由でパラメータ・メトリクス・アーティファクトを記録
+- ワーカー: Redisキューをブロッキング取得（`BRPOP` または `XREADGROUP BLOCK`）し、GPUコンテナで学習・評価を実行
+- 実行方式: `python {entrypoint} --config {config_file} --output {output_dir}` 形式で起動
+- MLflow記録: `MLFLOW_TRACKING_URI` 環境変数経由でパラメータ・メトリクス・アーティファクトを記録
 - リソース制御: タイムアウト、CPU/GPU/メモリ上限（small/mediumクラス）
+- エントリポイント規約: 投稿者は `--config` と `--output` 引数を受け取る `main.py` を提供
 
 ### 結果取得
 
