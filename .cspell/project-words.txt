@@ -5,6 +5,7 @@ AUPR
 AUROC
 Barusco
 Borsatti
+BRPOP
 BTAD
 CFA
 CFA+
@@ -29,6 +30,7 @@ eamodio
 EfficientAD
 Elsevier
 etal
+fastapi
 FastFlow
 Francesco
 GANomaly
@@ -70,6 +72,7 @@ Pezze
 plotly
 PRO
 PromptAD
+Pydantic
 pylance
 pytest
 RD++
@@ -100,5 +103,6 @@ wandb
 wenbihan
 WinCLIP
 Xplore
+XREADGROUP
 Youssef
 yzhang

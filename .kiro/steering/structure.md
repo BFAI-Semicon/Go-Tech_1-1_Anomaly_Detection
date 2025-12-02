@@ -1,0 +1,112 @@
+# Project Structure
+
+## Organization Philosophy
+
+Clean-lite設計（ドメイン/ポート/アダプタ）を採用し、ドメインロジックを外部実装（DB、キュー、MLflow）から分離します。将来の差し替えコスト最小化を重視し、ポート（抽象）とアダプタ（実装）を明確に分離します。
+
+## Directory Patterns
+
+### ドメイン層（ユースケース）
+
+**Location**: `/src/domain/`  
+**Purpose**: ビジネスロジック・ユースケース（外部実装に非依存）  
+**Example**: `CreateSubmission`, `EnqueueJob`, `GetJobStatus`, `GetResults`
+
+### ポート層（抽象インタフェース）
+
+**Location**: `/src/ports/`  
+**Purpose**: ドメインが依存する抽象インタフェース  
+**Example**:
+
+- `StoragePort`: 提出ファイル保存/参照
+- `JobQueuePort`: ジョブ投入/取り出し
+- `JobStatusPort`: 状態の保存/参照
+- `TrackingPort`: メトリクス記録・`run_id` 生成（Workerのみ使用）
+
+### アダプタ層（実装）
+
+**Location**: `/src/adapters/`  
+**Purpose**: ポートの具体実装（ファイルシステム、Redis、MLflow等）  
+**Example**:
+
+- `FileSystemStorageAdapter`: `/shared/submissions` へのファイル保存
+- `RedisJobQueueAdapter`: Redis List/Streams によるキュー操作
+- `RedisJobStatusAdapter`: Redis Hash による状態管理
+- `MLflowTrackingAdapter`: MLflow Tracking Server（HTTP/REST）へのメトリクス記録
+
+### API層（FastAPI）
+
+**Location**: `/src/api/`  
+**Purpose**: REST API エンドポイント、認証、バリデーション、レート制限  
+**Example**:
+
+- `POST /submissions`: 提出受付
+- `POST /jobs`: ジョブ投入
+- `GET /jobs/{id}/status|logs|results`: 状態・ログ・結果取得
+
+### Worker層
+
+**Location**: `/src/worker/`  
+**Purpose**: Redisキュー消費、anomalib学習・評価、MLflow記録  
+**Example**: `JobWorker` クラス（`BRPOP` でキュー待機、ジョブ実行、TrackingPort経由で記録）
+
+### 共有ボリューム
+
+**Location**: `/shared/`  
+**Purpose**: 提出ファイル、アーティファクト、ログ、MLflow SQLiteバックエンド  
+**Example**:
+
+- `/shared/submissions`: 投稿コード・データ
+- `/shared/artifacts`: MLflow artifact_root
+- `/shared/logs`: 学習・評価ログ（任意）
+- `/shared/jobs`: ジョブメタJSON（任意）
+- `/shared/mlflow.db`: SQLiteバックエンドストア
+
+## Naming Conventions
+
+- **Files**: `snake_case.py`（Pythonモジュール）
+- **Classes**: `PascalCase`（例: `CreateSubmission`, `RedisJobQueueAdapter`）
+- **Functions**: `snake_case`（例: `enqueue_job`, `get_job_status`）
+- **Constants**: `UPPER_SNAKE_CASE`（例: `MLFLOW_TRACKING_URI`, `UPLOAD_ROOT`）
+
+## Import Organization
+
+```python
+# 標準ライブラリ
+import os
+from typing import Optional
+
+# サードパーティ
+import mlflow
+from fastapi import FastAPI
+from redis import Redis
+
+# プロジェクト内（絶対インポート推奨）
+from src.domain.create_submission import CreateSubmission
+from src.ports.storage_port import StoragePort
+from src.adapters.filesystem_storage_adapter import FileSystemStorageAdapter
+```
+
+**Path Aliases**: なし（絶対インポート `src.` を使用）
+
+## Code Organization Principles
+
+### 依存方向
+
+- ドメイン → ポート（抽象）のみ依存
+- アダプタ → ポート実装（ドメインには非依存）
+- API/Worker → ドメイン + アダプタ（DIで注入）
+
+### 境界の責務
+
+- **API**: 認証、入力正規化・バリデーション、冪等化、レート制限、ジョブ投入、ステータス集約、`run_id` とMLflow UIリンク返却（MLflow DB直読なし）
+- **Worker**: 学習/評価実行、TrackingPort経由で記録、JobStatusPort経由で進捗更新
+- **ドメイン**: ビジネスロジック（外部実装に非依存）
+- **ポート**: 抽象インタフェース（実装詳細を隠蔽）
+- **アダプタ**: 具体実装（差し替え可能）
+
+### テスト戦略
+
+- **ユニットテスト**: ドメイン・ポート実装（モックアダプタ使用）
+- **統合テスト**: docker-compose環境でエンドツーエンド（実Redis・MLflow使用）
+- **境界テスト**: ファイルサイズ上限、タイムアウト、重複投入、OOM等
