@@ -68,7 +68,7 @@ API/Worker → ドメイン + アダプタ（DIで注入）
 #### API (FastAPI)
 
 - **役割**: 提出受付、認証、バリデーション、冪等化、レート制限、ジョブ投入、ステータス集約
-- **ポート**: 8000
+- **ポート**: 8010
 - **依存ポート**:
   - `StoragePort`: 提出ファイル保存
   - `JobQueuePort`: ジョブ投入
@@ -76,7 +76,7 @@ API/Worker → ドメイン + アダプタ（DIで注入）
 - **環境変数**:
   - `REDIS_URL=redis://redis:6379/0`
   - `UPLOAD_ROOT=/shared/submissions`
-  - `MLFLOW_TRACKING_URI=http://mlflow:5000` (任意: UIリンク生成用)
+  - `MLFLOW_TRACKING_URI=http://mlflow:5010` (任意: UIリンク生成用)
 
 #### Worker (GPU Container)
 
@@ -88,7 +88,7 @@ API/Worker → ドメイン + アダプタ（DIで注入）
   - `StoragePort`: 提出ファイル読み取り
   - `TrackingPort`: MLflow記録
 - **環境変数**:
-  - `MLFLOW_TRACKING_URI=http://mlflow:5000`
+  - `MLFLOW_TRACKING_URI=http://mlflow:5010`
   - `REDIS_URL=redis://redis:6379/0`
   - `UPLOAD_ROOT=/shared/submissions`
   - `ARTIFACT_ROOT=/shared/artifacts`
@@ -103,7 +103,7 @@ API/Worker → ドメイン + アダプタ（DIで注入）
 #### MLflow Tracking Server
 
 - **役割**: 実験記録・可視化
-- **ポート**: 5000
+- **ポート**: 5010
 - **バックエンドストア**: SQLite (`/shared/mlflow.db`) ※初期構成、並行性増加時はPostgres移行
 - **アーティファクトストア**: ローカルファイル (`file:///shared/artifacts`)
 
@@ -205,7 +205,7 @@ Client → GET /jobs/{job_id}/results
 ### 5. リーダーボード表示フロー
 
 ```text
-Client → MLflow UI (http://mlflow:5000)
+Client → MLflow UI (http://mlflow:5010)
        → 実験一覧・比較ビュー・メトリクスソート
 
 または
@@ -522,8 +522,8 @@ class TrackingPort(ABC):
 {
   "job_id": "job_xyz789",
   "run_id": "abc123def456",
-  "mlflow_ui_link": "http://mlflow:5000/#/experiments/1/runs/abc123def456",
-  "mlflow_rest_link": "http://mlflow:5000/api/2.0/mlflow/runs/get?run_id=abc123def456"
+  "mlflow_ui_link": "http://mlflow:5010/#/experiments/1/runs/abc123def456",
+  "mlflow_rest_link": "http://mlflow:5010/api/2.0/mlflow/runs/get?run_id=abc123def456"
 }
 ```
 
@@ -643,11 +643,11 @@ services:
   api:
     build: ./api
     ports:
-      - "8000:8000"
+      - "8010:8010"
     environment:
       - REDIS_URL=redis://redis:6379/0
       - UPLOAD_ROOT=/shared/submissions
-      - MLFLOW_TRACKING_URI=http://mlflow:5000
+      - MLFLOW_TRACKING_URI=http://mlflow:5010
     volumes:
       - shared:/shared
     depends_on:
@@ -663,7 +663,7 @@ services:
               count: all
               capabilities: [gpu]
     environment:
-      - MLFLOW_TRACKING_URI=http://mlflow:5000
+      - MLFLOW_TRACKING_URI=http://mlflow:5010
       - REDIS_URL=redis://redis:6379/0
       - UPLOAD_ROOT=/shared/submissions
       - ARTIFACT_ROOT=/shared/artifacts
@@ -687,21 +687,21 @@ services:
   mlflow:
     image: ghcr.io/mlflow/mlflow:latest
     ports:
-      - "5000:5000"
+      - "5010:5010"
     environment:
       - BACKEND_STORE_URI=sqlite:////shared/mlflow.db
       - DEFAULT_ARTIFACT_ROOT=file:///shared/artifacts
     volumes:
       - shared:/shared
-    command: mlflow server --host 0.0.0.0 --port 5000
+    command: mlflow server --host 0.0.0.0 --port 5010
 
   streamlit:
     build: ./streamlit
     ports:
       - "8501:8501"
     environment:
-      - API_URL=http://api:8000
-      - MLFLOW_URL=http://mlflow:5000
+      - API_URL=http://api:8010
+      - MLFLOW_URL=http://mlflow:5010
     depends_on:
       - api
 
@@ -716,7 +716,7 @@ volumes:
 # API
 REDIS_URL=redis://redis:6379/0
 UPLOAD_ROOT=/shared/submissions
-MLFLOW_TRACKING_URI=http://mlflow:5000
+MLFLOW_TRACKING_URI=http://mlflow:5010
 API_TOKENS=token1,token2,token3
 ALLOWED_ORIGINS=http://localhost:8501
 

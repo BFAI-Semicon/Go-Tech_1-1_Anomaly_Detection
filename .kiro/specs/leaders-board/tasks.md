@@ -33,8 +33,8 @@ Redisキュー消費、ジョブ実行、MLflow記録
 
 ##### 1. プロジェクトディレクトリ構造作成
 
-- [ ] ディレクトリ構造を作成
-- [ ] 各ディレクトリに `__init__.py` を配置
+- [x] ディレクトリ構造を作成
+- [x] 各ディレクトリに `__init__.py` を配置
 
 ```text
 leaders-board/
@@ -69,21 +69,22 @@ leaders-board/
 
 ##### 2. 依存関係ファイル作成
 
-- [ ] `requirements.txt` 作成（FastAPI, Redis, MLflow, Pydantic等）
-- [ ] `requirements-dev.txt` 作成（pytest, ruff, black, isort, mypy, debugpy等）
-- [ ] `pyproject.toml` 作成（ruff, black, isort, mypy設定）
+- [x] `requirements.txt` 作成（FastAPI, Redis, MLflow, Pydantic等）
+- [x] `requirements-dev.txt` 作成（pytest, ruff, black, isort, mypy, debugpy等）
+- [x] `requirements-worker.txt` 作成（torch, anomalib, redis, mlflow, opencv等）
+- [x] `pyproject.toml` 作成（ruff, black, isort, mypy設定）
 
 ##### 3. 環境変数テンプレート作成
 
-- [ ] `.env.example` 作成（REDIS_URL, MLFLOW_TRACKING_URI, API_TOKENS等）
+- [x] `.env.example` 作成（REDIS_URL, MLFLOW_TRACKING_URI, API_TOKENS等）
 
 ##### 4. docker-compose.yml（本番用）作成
 
-- [ ] Redis サービス定義
-- [ ] MLflow サービス定義
-- [ ] API サービス定義（target: prod）
-- [ ] Worker サービス定義（GPU対応）
-- [ ] 共有ボリューム定義
+- [x] Redis サービス定義
+- [x] MLflow サービス定義
+- [x] API サービス定義（target: prod）
+- [x] Worker サービス定義（GPU対応）
+- [x] 共有ボリューム定義
 
 ```yaml
 services:
@@ -93,10 +94,10 @@ services:
       dockerfile: docker/api.Dockerfile
       target: prod
     ports:
-      - "8000:8000"
+      - "8010:8010"
     environment:
       - REDIS_URL=redis://redis:6379/0
-      - MLFLOW_TRACKING_URI=http://mlflow:5000
+      - MLFLOW_TRACKING_URI=http://mlflow:5010
     volumes:
       - shared:/shared
     depends_on:
@@ -108,7 +109,7 @@ services:
       context: .
       dockerfile: docker/worker.Dockerfile
     environment:
-      - MLFLOW_TRACKING_URI=http://mlflow:5000
+      - MLFLOW_TRACKING_URI=http://mlflow:5010
       - REDIS_URL=redis://redis:6379/0
     volumes:
       - shared:/shared
@@ -134,13 +135,13 @@ services:
   mlflow:
     image: ghcr.io/mlflow/mlflow:latest
     ports:
-      - "5000:5000"
+      - "5010:5010"
     environment:
       - BACKEND_STORE_URI=sqlite:////shared/mlflow.db
       - DEFAULT_ARTIFACT_ROOT=file:///shared/artifacts
     volumes:
       - shared:/shared
-    command: mlflow server --host 0.0.0.0 --port 5000
+    command: mlflow server --host 0.0.0.0 --port 5010
 
 volumes:
   shared:
@@ -149,8 +150,8 @@ volumes:
 
 ##### 5. docker-compose.override.yml（開発用）作成
 
-- [ ] API サービスのtargetをdevに変更
-- [ ] ソースコードのボリュームマウント設定
+- [x] API サービスのtargetをdevに変更
+- [x] ソースコードのボリュームマウント設定
 
 ```yaml
 # 開発時に自動適用（devcontainer用）
@@ -167,8 +168,8 @@ services:
 
 ##### 6. Dockerfile作成
 
-- [ ] `docker/api.Dockerfile` 作成（マルチステージ: dev/prod）
-- [ ] `docker/worker.Dockerfile` 作成
+- [x] `docker/api.Dockerfile` 作成（マルチステージ: dev/prod）
+- [x] `docker/worker.Dockerfile` 作成
 
 ```dockerfile
 # docker/api.Dockerfile (マルチステージ)
@@ -193,7 +194,7 @@ RUN pip install --no-cache-dir -r requirements-dev.txt
 # 本番ステージ
 FROM base AS prod
 COPY src/ ./src/
-CMD ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8010"]
 ```
 
 ```dockerfile
@@ -212,7 +213,7 @@ CMD ["python", "-m", "src.worker.main"]
 
 ##### 7. devcontainer.json更新
 
-- [ ] `.devcontainer/devcontainer.json` を更新（dockerComposeFile指定）
+- [x] `.devcontainer/devcontainer.json` を更新（dockerComposeFile指定）
 
 ```json
 {
@@ -236,7 +237,7 @@ CMD ["python", "-m", "src.worker.main"]
       ]
     }
   },
-  "forwardPorts": [8000, 5000, 6379],
+  "forwardPorts": [8010, 5010, 6379],
   "remoteUser": "root"
 }
 ```
@@ -790,11 +791,11 @@ services:
       context: .
       dockerfile: docker/api.Dockerfile
     ports:
-      - "8000:8000"
+      - "8010:8010"
     environment:
       - REDIS_URL=redis://redis:6379/0
       - UPLOAD_ROOT=/shared/submissions
-      - MLFLOW_TRACKING_URI=http://mlflow:5000
+      - MLFLOW_TRACKING_URI=http://mlflow:5010
       - API_TOKENS=${API_TOKENS}
     volumes:
       - shared:/shared
@@ -813,7 +814,7 @@ services:
               count: all
               capabilities: [gpu]
     environment:
-      - MLFLOW_TRACKING_URI=http://mlflow:5000
+      - MLFLOW_TRACKING_URI=http://mlflow:5010
       - REDIS_URL=redis://redis:6379/0
       - UPLOAD_ROOT=/shared/submissions
       - ARTIFACT_ROOT=/shared/artifacts
@@ -837,13 +838,13 @@ services:
   mlflow:
     image: ghcr.io/mlflow/mlflow:latest
     ports:
-      - "5000:5000"
+      - "5010:5010"
     environment:
       - BACKEND_STORE_URI=sqlite:////shared/mlflow.db
       - DEFAULT_ARTIFACT_ROOT=file:///shared/artifacts
     volumes:
       - shared:/shared
-    command: mlflow server --host 0.0.0.0 --port 5000
+    command: mlflow server --host 0.0.0.0 --port 5010
 
 volumes:
   shared:
@@ -861,8 +862,8 @@ volumes:
 ##### 3. 動作確認
 
 - [ ] `docker-compose up` で全サービスが起動することを確認
-- [ ] API ヘルスチェック（<http://localhost:8000/docs>）
-- [ ] MLflow UI（<http://localhost:5000>）
+- [ ] API ヘルスチェック（<http://localhost:8010/docs>）
+- [ ] MLflow UI（<http://localhost:5010>）
 - [ ] Redisへの接続確認
 
 #### 受け入れ基準
@@ -926,8 +927,8 @@ streamlit:
   ports:
     - "8501:8501"
   environment:
-    - API_URL=http://api:8000
-    - MLFLOW_URL=http://mlflow:5000
+    - API_URL=http://api:8010
+    - MLFLOW_URL=http://mlflow:5010
   depends_on:
     - api
 ```

@@ -114,11 +114,11 @@ with mlflow.start_run(run_name=run_name):
 
 - API（FastAPI）
   - 役割: 提出受付（マルチパートアップロード）、認証、入力正規化・バリデーション、冪等化、レート制限、ジョブ投入、ステータス集約、`run_id` と MLflow UI リンクの返却（MLflow DB 直参照なし）
-  - ポート: 8000
+  - ポート: 8010
   - 環境変数（例）:
     - `REDIS_URL=redis://redis:6379/0`
     - `UPLOAD_ROOT=/shared/submissions`
-    - 任意: `MLFLOW_TRACKING_URI=http://mlflow:5000`（MLflow UI へのリンク生成に用いる場合のみ）
+    - 任意: `MLFLOW_TRACKING_URI=http://mlflow:5010`（MLflow UI へのリンク生成に用いる場合のみ）
   - ボリューム: `shared:/shared`
   - 依存: `redis`
 
@@ -126,7 +126,7 @@ with mlflow.start_run(run_name=run_name):
   - 役割: キュー（Redis）を消費し、anomalib で学習/評価を実行して MLflow に記録
   - GPU: `--gpus all`（`nvidia-container-runtime`）
   - 環境変数（例）:
-    - `MLFLOW_TRACKING_URI=http://mlflow:5000`
+    - `MLFLOW_TRACKING_URI=http://mlflow:5010`
     - `REDIS_URL=redis://redis:6379/0`
     - `UPLOAD_ROOT=/shared/submissions`
     - `ARTIFACT_ROOT=/shared/artifacts`
@@ -139,7 +139,7 @@ with mlflow.start_run(run_name=run_name):
 
 - MLflow（Tracking Server）
   - 役割: 実験のパラメータ/メトリクス/アーティファクトの記録・閲覧
-  - ポート: 5000
+  - ポート: 5010
   - 環境変数（例）:
     - `BACKEND_STORE_URI=sqlite:////shared/mlflow.db`
     - `DEFAULT_ARTIFACT_ROOT=file:///shared/artifacts`
@@ -155,7 +155,7 @@ with mlflow.start_run(run_name=run_name):
 
 ### ポートと起動順
 
-- ポートまとめ: API=8000, MLflow=5000, Redis=6379
+- ポートまとめ: API=8010, MLflow=5010, Redis=6379
 - 起動順序（目安）: `redis` → `mlflow` → `api`/`worker`
 
 ### 任意の追加（後から拡張）

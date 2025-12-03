@@ -1,10 +1,15 @@
 // For format details, see https://aka.ms/devcontainer.json. For config options, see the
 // README at: https://github.com/devcontainers/templates/tree/main/src/python
 {
-	"name": "Python 3",
-	// Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
-	// "image": "mcr.microsoft.com/devcontainers/python:0-3.11",
-	"dockerFile": "Dockerfile",
+	"name": "LeadersBoard Dev",
+	
+	// Use docker-compose for development environment
+	"dockerComposeFile": [
+		"../LeadersBoard/docker-compose.yml",
+		"../LeadersBoard/docker-compose.override.yml"
+	],
+	"service": "api",
+	"workspaceFolder": "/workspaces/2025",
 
 	// Features to add to the dev container. More info: https://containers.dev/features.
 	// "features": {},
@@ -14,7 +19,10 @@
 		// Configure properties specific to VS Code.
 		"vscode": {
 			"settings": {
-				"python.defaultInterpreterPath": "/usr/local/bin/python"
+				"python.defaultInterpreterPath": "/usr/local/bin/python",
+				"python.analysis.extraPaths": [
+					"/workspaces/2025/LeadersBoard"
+				]
 			},
 			"extensions": [
 				"csholmq.excel-to-markdown-table",
@@ -39,22 +47,30 @@
 		}
 	},
 	
-	// Use 'forwardPorts' to make a list of ports inside the container available locally.
-	// "forwardPorts": [9000],
+	// Forward ports for API, MLflow, and Redis
+	"forwardPorts": [8010, 5010, 6379],
 
 	// Use 'portsAttributes' to set default properties for specific forwarded ports. 
 	// More info: https://containers.dev/implementors/json_reference/#port-attributes
 	"portsAttributes": {
-		"9000": {
-			"label": "Hello Remote World",
+		"8010": {
+			"label": "LeadersBoard API",
 			"onAutoForward": "notify"
+		},
+		"5010": {
+			"label": "MLflow UI",
+			"onAutoForward": "notify"
+		},
+		"6379": {
+			"label": "Redis",
+			"onAutoForward": "silent"
 		}
 	},
 
 	// Use 'postCreateCommand' to run commands after the container is created.
-	"postCreateCommand": "pip3 install -r requirements.txt && npx cc-sdd@latest --cursor --lang ja || true",
+	"postCreateCommand": "cd /workspaces/2025/LeadersBoard && pip3 install -r requirements-dev.txt && cd /workspaces/2025 && pip3 install -r requirements.txt && npx cc-sdd@latest --cursor --lang ja || true",
 
-	// Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
+	// Run as vscode user (UID 1000) for host compatibility
 	"remoteUser": "vscode",
 	"mounts": [
 		"source=${localEnv:HOME}/.ssh,target=/home/vscode/.ssh,type=bind,readonly"

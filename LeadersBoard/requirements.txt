@@ -1,0 +1,25 @@
+# LeadersBoard - Production Dependencies
+
+# API Framework
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+
+# Data Validation
+pydantic>=2.10.0
+pydantic-settings>=2.6.0
+
+# Redis
+redis>=5.2.0
+
+# MLflow Client
+mlflow>=2.18.0
+
+# HTTP Client
+httpx>=0.28.0
+
+# File Handling
+python-multipart>=0.0.17
+aiofiles>=24.1.0
+
+# Utilities
+python-dotenv>=1.0.1

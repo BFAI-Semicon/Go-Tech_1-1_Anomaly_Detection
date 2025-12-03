@@ -1,0 +1,6 @@
+# Worker dependencies
+# Note: torch, torchvision, opencv-python, pyyaml are pre-installed in nvcr.io/nvidia/pytorch:25.11-py3
+anomalib>=0.3.0
+mlflow>=2.18.0
+redis>=5.2.0
+python-dotenv>=1.0.1

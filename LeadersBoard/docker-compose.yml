@@ -1,0 +1,76 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+      target: prod
+    ports:
+      - "8010:8010"
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - MLFLOW_TRACKING_URI=http://mlflow:5010
+      - UPLOAD_ROOT=/shared/submissions
+      - ARTIFACT_ROOT=/shared/artifacts
+    volumes:
+      - shared:/shared
+    depends_on:
+      - redis
+      - mlflow
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      dockerfile: docker/worker.Dockerfile
+    environment:
+      - MLFLOW_TRACKING_URI=http://mlflow:5010
+      - REDIS_URL=redis://redis:6379/0
+      - UPLOAD_ROOT=/shared/submissions
+      - ARTIFACT_ROOT=/shared/artifacts
+    volumes:
+      - shared:/shared
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    depends_on:
+      - redis
+      - mlflow
+    ipc: host
+    ulimits:
+      memlock: -1
+      stack: 67108864
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    restart: unless-stopped
+
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:latest
+    ports:
+      - "5010:5010"
+    environment:
+      - MLFLOW_BACKEND_STORE_URI=sqlite:////shared/mlflow.db
+      - MLFLOW_DEFAULT_ARTIFACT_ROOT=file:///shared/artifacts
+    volumes:
+      - shared:/shared
+    command: >
+      mlflow server
+      --host 0.0.0.0
+      --port 5010
+      --backend-store-uri sqlite:////shared/mlflow.db
+      --default-artifact-root file:///shared/artifacts
+    restart: unless-stopped
+
+volumes:
+  shared:
+  redis-data:
