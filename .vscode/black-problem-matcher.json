@@ -1,0 +1,14 @@
+{
+  "name": "black",
+  "owner": "python",
+  "severity": "warning",
+  "fileLocation": ["relative", "LeadersBoard"],
+  "pattern": [
+    {
+      "regexp": "^(.*?):(\\d+): (.*)$",
+      "file": 1,
+      "line": 2,
+      "message": 3
+    }
+  ]
+}

@@ -263,8 +263,8 @@ CMD ["python", "-m", "src.worker.main"]
 
 ##### 1. `src/ports/storage_port.py`: StoragePort抽象クラス
 
-- [ ] StoragePort抽象クラスを実装
-- [ ] 全メソッドに型ヒントとdocstringを記載
+- [x] StoragePort抽象クラスを実装
+- [x] 全メソッドに型ヒントとdocstringを記載
 
 ```python
 from abc import ABC, abstractmethod
@@ -304,10 +304,10 @@ class StoragePort(ABC):
 
 ##### 2. その他のポート
 
-- [ ] `src/ports/job_queue_port.py`: JobQueuePort抽象クラスを実装
-- [ ] `src/ports/job_status_port.py`: JobStatusPort抽象クラスを実装
-- [ ] `src/ports/tracking_port.py`: TrackingPort抽象クラスを実装
-- [ ] ユニットテスト作成（`tests/unit/test_ports.py`）
+- [x] `src/ports/job_queue_port.py`: JobQueuePort抽象クラスを実装
+- [x] `src/ports/job_status_port.py`: JobStatusPort抽象クラスを実装
+- [x] `src/ports/tracking_port.py`: TrackingPort抽象クラスを実装
+- [x] ユニットテスト作成（`tests/unit/test_ports.py`）
 
 #### 受け入れ基準
 

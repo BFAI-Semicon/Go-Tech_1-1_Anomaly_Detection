@@ -1,0 +1,11 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Black Format",
+      "type": "shell",
+      "command": "cd LeadersBoard && black .",
+      "problemMatcher": []
+    }
+  ]
+}

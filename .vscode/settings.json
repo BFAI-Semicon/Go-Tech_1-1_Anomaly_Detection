@@ -9,7 +9,11 @@
     "cSpell.dictionaries": [
         "project-words"
     ],
+    "editor.formatOnSave": true,
     "files.insertFinalNewline": true,
     "files.trimFinalNewlines": true,
-    "files.eol": "\n"
+    "files.eol": "\n",
+    "python.formatting.provider": "black",
+    "python.linting.enabled": true,
+    "python.linting.flake8Enabled": false,
 }

@@ -73,6 +73,7 @@ LPUSH
 markdowntabl
 marp
 matplotlib
+maxfail
 MDPI
 memlock
 mhutchie
