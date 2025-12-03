@@ -52,6 +52,58 @@
 - Python 3.13
 - `.env` ファイル（MLflow URI、共有ディレクトリパス）
 
+### devcontainer統合
+
+- **構成**: `docker-compose.yml`（本番） + `docker-compose.override.yml`（開発オーバーライド）
+- **マルチステージビルド**: `api.Dockerfile`に`dev`/`prod`ステージを定義
+- **devcontainer.json**: 両ファイルを参照し、`api`サービスに接続
+- **API開発**: devcontainer（apiコンテナ）内で直接実行（Cursorデバッガー対応）
+- **Worker開発**: GPUコンテナ内で実行（nvidia-container-runtime必須）
+  - デバッグ: ログベース + ユニットテスト（モックアダプタ）
+  - Workerのビジネスロジックはドメイン層に分離し、devcontainer内でテスト可能
+- **依存サービス**: Redis, MLflow, Workerはdocker-composeサービスとして起動
+
+### docker-compose構成
+
+```yaml
+# docker-compose.yml（本番用）
+services:
+  api:
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+      target: prod  # 本番ステージ
+    # ...
+
+# docker-compose.override.yml（開発用オーバーライド）
+services:
+  api:
+    build:
+      target: dev  # 開発ステージに切り替え
+    volumes:
+      - ..:/workspaces/2025:cached  # ソースマウント
+```
+
+### 開発フロー
+
+```bash
+# devcontainer起動時に自動でapi(dev), Redis, MLflow, Workerが起動
+# APIはdevcontainer内で直接実行（デバッガー使用可能）
+python -m src.api.main
+
+# Workerログ確認
+docker-compose logs -f worker
+
+# ユニットテスト（devcontainer内）
+pytest tests/unit/ --cov
+
+# 統合テスト（全サービス使用）
+pytest tests/integration/
+
+# 本番ビルド確認（override無視）
+docker-compose -f docker-compose.yml up --build
+```
+
 ### Common Commands
 
 ```bash

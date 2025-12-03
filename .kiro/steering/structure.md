@@ -62,6 +62,37 @@ Clean-lite設計（ドメイン/ポート/アダプタ）を採用し、ドメ�
 - `/shared/jobs`: ジョブメタJSON（任意）
 - `/shared/mlflow.db`: SQLiteバックエンドストア
 
+### Docker構成
+
+**Location**: `LeadersBoard/`  
+**Purpose**: docker-compose構成（本番 + 開発オーバーライド）  
+**Example**:
+
+- `docker-compose.yml`: 本番用構成ファイル（api, worker, redis, mlflow）
+- `docker-compose.override.yml`: 開発用オーバーライド（apiのtargetをdevに変更、ソースマウント）
+- `docker/api.Dockerfile`: API用Dockerfile（マルチステージ: dev/prod）
+- `docker/worker.Dockerfile`: Worker用Dockerfile（GPU対応）
+- `.env.example`: 環境変数テンプレート
+
+**マルチステージビルド**:
+
+- `api.Dockerfile`は`dev`と`prod`の2ステージを持つ
+- 開発時: `docker-compose.override.yml`で`target: dev`を指定
+- 本番時: `docker-compose.yml`のみ使用（`target: prod`がデフォルト）
+
+**devcontainer.json設定**:
+
+```json
+{
+  "dockerComposeFile": [
+    "../LeadersBoard/docker-compose.yml",
+    "../LeadersBoard/docker-compose.override.yml"
+  ],
+  "service": "api",
+  "workspaceFolder": "/workspaces/2025"
+}
+```
+
 ## Naming Conventions
 
 - **Files**: `snake_case.py`（Pythonモジュール）

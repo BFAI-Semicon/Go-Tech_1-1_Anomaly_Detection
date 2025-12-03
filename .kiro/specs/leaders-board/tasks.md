@@ -48,39 +48,81 @@ leaders-board/
 │   ├── unit/
 │   └── integration/
 ├── docker/
-│   ├── api.Dockerfile
+│   ├── api.Dockerfile (マルチステージ: dev/prod)
 │   ├── worker.Dockerfile
 │   ├── streamlit.Dockerfile (任意)
 │   └── mlflow.Dockerfile (任意: カスタマイズ時のみ)
-├── docker-compose.yml
+├── docker-compose.yml (本番用)
+├── docker-compose.override.yml (開発用オーバーライド)
 ├── .env.example
 ├── requirements.txt
+├── requirements-dev.txt
 ├── pyproject.toml
 └── README.md
 ```
 
-**注**: MLflowは公式イメージ（`ghcr.io/mlflow/mlflow:latest`）を使用するため、基本的にはDockerfileは不要です。認証追加やプラグイン導入などのカスタマイズが必要な場合のみ、`docker/mlflow.Dockerfile` を作成します。
+**注**:
+
+- MLflowは公式イメージ（`ghcr.io/mlflow/mlflow:latest`）を使用するため、基本的にはDockerfileは不要です。認証追加やプラグイン導入などのカスタマイズが必要な場合のみ、`docker/mlflow.Dockerfile` を作成します。
+- `api.Dockerfile`はマルチステージビルドで`dev`（開発）と`prod`（本番）の2ステージを持ちます。
+- `docker-compose.override.yml`は開発時に自動適用され、apiのtargetを`dev`に切り替えます。
 
 ##### 2. 依存関係ファイル作成
 
-- [ ] `requirements.txt` 作成（FastAPI, Redis, MLflow, Pydantic, pytest等）
+- [ ] `requirements.txt` 作成（FastAPI, Redis, MLflow, Pydantic等）
+- [ ] `requirements-dev.txt` 作成（pytest, ruff, black, isort, mypy, debugpy等）
 - [ ] `pyproject.toml` 作成（ruff, black, isort, mypy設定）
 
 ##### 3. 環境変数テンプレート作成
 
 - [ ] `.env.example` 作成（REDIS_URL, MLFLOW_TRACKING_URI, API_TOKENS等）
 
-##### 4. 基本的なdocker-compose.yml作成
+##### 4. docker-compose.yml（本番用）作成
 
 - [ ] Redis サービス定義
 - [ ] MLflow サービス定義
+- [ ] API サービス定義（target: prod）
+- [ ] Worker サービス定義（GPU対応）
 - [ ] 共有ボリューム定義
-- [ ] API/Worker サービスの雛形（build設定のみ、後で完成）
 
 ```yaml
-version: '3.8'
-
 services:
+  api:
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+      target: prod
+    ports:
+      - "8000:8000"
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+    volumes:
+      - shared:/shared
+    depends_on:
+      - redis
+      - mlflow
+
+  worker:
+    build:
+      context: .
+      dockerfile: docker/worker.Dockerfile
+    environment:
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+      - REDIS_URL=redis://redis:6379/0
+    volumes:
+      - shared:/shared
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    depends_on:
+      - redis
+      - mlflow
+
   redis:
     image: redis:7-alpine
     ports:
@@ -100,59 +142,62 @@ services:
       - shared:/shared
     command: mlflow server --host 0.0.0.0 --port 5000
 
-  # api:
-  #   build:
-  #     context: .
-  #     dockerfile: docker/api.Dockerfile
-  #   ports:
-  #     - "8000:8000"
-  #   environment:
-  #     - REDIS_URL=redis://redis:6379/0
-  #     - MLFLOW_TRACKING_URI=http://mlflow:5000
-  #   volumes:
-  #     - shared:/shared
-  #   depends_on:
-  #     - redis
-
-  # worker:
-  #   build:
-  #     context: .
-  #     dockerfile: docker/worker.Dockerfile
-  #   environment:
-  #     - MLFLOW_TRACKING_URI=http://mlflow:5000
-  #     - REDIS_URL=redis://redis:6379/0
-  #   volumes:
-  #     - shared:/shared
-  #   depends_on:
-  #     - redis
-  #     - mlflow
-
 volumes:
   shared:
   redis-data:
 ```
 
-##### 5. Dockerfile雛形作成
+##### 5. docker-compose.override.yml（開発用）作成
 
-- [ ] `docker/api.Dockerfile` 雛形作成
-- [ ] `docker/worker.Dockerfile` 雛形作成
+- [ ] API サービスのtargetをdevに変更
+- [ ] ソースコードのボリュームマウント設定
+
+```yaml
+# 開発時に自動適用（devcontainer用）
+services:
+  api:
+    build:
+      target: dev  # 開発ステージに切り替え
+    volumes:
+      - ..:/workspaces/2025:cached
+      - shared:/shared
+    # 開発時はコンテナ内でpython -m src.api.mainを直接実行
+    command: sleep infinity
+```
+
+##### 6. Dockerfile作成
+
+- [ ] `docker/api.Dockerfile` 作成（マルチステージ: dev/prod）
+- [ ] `docker/worker.Dockerfile` 作成
 
 ```dockerfile
-# docker/api.Dockerfile (雛形)
-FROM python:3.13-slim
+# docker/api.Dockerfile (マルチステージ)
 
+# ベースステージ
+FROM python:3.13-slim AS base
 WORKDIR /app
-
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY src/ ./src/
+# 開発ステージ
+FROM base AS dev
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends curl git && \
+    curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
+    apt-get install -y --no-install-recommends nodejs && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+COPY requirements-dev.txt .
+RUN pip install --no-cache-dir -r requirements-dev.txt
+# ソースはボリュームマウントで提供
 
+# 本番ステージ
+FROM base AS prod
+COPY src/ ./src/
 CMD ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
 ```
 
 ```dockerfile
-# docker/worker.Dockerfile (雛形)
+# docker/worker.Dockerfile
 FROM python:3.13-slim
 
 WORKDIR /app
@@ -165,13 +210,46 @@ COPY src/ ./src/
 CMD ["python", "-m", "src.worker.main"]
 ```
 
+##### 7. devcontainer.json更新
+
+- [ ] `.devcontainer/devcontainer.json` を更新（dockerComposeFile指定）
+
+```json
+{
+  "name": "LeadersBoard Dev",
+  "dockerComposeFile": [
+    "../LeadersBoard/docker-compose.yml",
+    "../LeadersBoard/docker-compose.override.yml"
+  ],
+  "service": "api",
+  "workspaceFolder": "/workspaces/2025",
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/local/bin/python"
+      },
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-python.black-formatter",
+        "ms-python.mypy-type-checker"
+      ]
+    }
+  },
+  "forwardPorts": [8000, 5000, 6379],
+  "remoteUser": "root"
+}
+```
+
 #### 受け入れ基準
 
 - ディレクトリ構造が作成され、空の `__init__.py` が配置されている
-- `requirements.txt` に必要な依存関係が記載されている
+- `requirements.txt`、`requirements-dev.txt` に必要な依存関係が記載されている
 - `.env.example` に環境変数テンプレートが記載されている
 - `docker-compose up redis mlflow` でRedisとMLflowが起動する
-- Dockerfile雛形が作成されている
+- `docker-compose up worker` でWorkerが起動する（GPU環境）
+- devcontainerが起動し、Cursorから接続できる
+- devcontainer内で `python -m src.api.main` が実行可能（空のmain.pyでOK）
 
 ---
 

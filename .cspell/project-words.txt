@@ -23,6 +23,7 @@ CVPR
 Dalle
 davidanson
 Davide
+debugpy
 DeepPCB
 devcontainers
 Dice
