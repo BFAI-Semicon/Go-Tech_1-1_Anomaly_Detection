@@ -85,6 +85,7 @@ mypy
 Neur
 noninteractive
 NOPASSWD
+nvcr
 Omniboard
 ONNX
 opencv

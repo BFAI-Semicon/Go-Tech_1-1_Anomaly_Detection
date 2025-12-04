@@ -16,6 +16,12 @@
 - **Experiment Tracking**: MLflow Tracking Server（パラメータ・メトリクス・アーティファクト記録）
 - **UI (Optional)**: Streamlit（提出フォーム、ジョブ一覧、MLflowリンク）
 
+### Container Runtime
+
+- **Base Image (GPU)**: `nvcr.io/nvidia/pytorch:25.11-py3`（PyTorch 2.10 開発版、CUDA 対応）
+- **起動方式（API）**: `uvicorn`（`src.api.main:app`）
+- **起動方式（Worker）**: `python -m src.worker.main`
+
 ## Key Libraries
 
 - **anomalib**: 異常検知モデルの学習・評価フレームワーク
@@ -36,6 +42,12 @@
 - **Linter**: `ruff` または `flake8` + `black`
 - **Formatter**: `black`
 - **Import Order**: `isort`
+
+### Process Lifecycle（Worker）
+
+- **待機**: キュー実装が入るまでの暫定措置として、低負荷の待機ループでプロセスを維持
+- **終了**: `SIGTERM` / `SIGINT` を捕捉し、グレースフルシャットダウン（`threading.Event` 等で中断）
+- **将来置換**: 待機ループは、`BRPOP` または `XREADGROUP BLOCK` を用いるブロッキング待機（`JobWorker.run()`）に置換予定
 
 ### Testing
 

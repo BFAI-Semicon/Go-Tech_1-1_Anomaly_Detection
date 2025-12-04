@@ -50,6 +50,12 @@ Clean-lite設計（ドメイン/ポート/アダプタ）を採用し、ドメ�
 **Purpose**: Redisキュー消費、anomalib学習・評価、MLflow記録  
 **Example**: `JobWorker` クラス（`BRPOP` でキュー待機、ジョブ実行、TrackingPort経由で記録）
 
+#### エントリポイントのライフサイクル（パターン）
+
+- 起動時にログ初期化 → 「待機開始」ログ出力
+- `SIGTERM` / `SIGINT` を捕捉して安全に停止（グレースフルシャットダウン）
+- 暫定実装では軽量な待機ループでプロセスを維持し、将来的に `JobWorker.run()`（ブロッキング待機 + 実行）へ置換
+
 ### 共有ボリューム
 
 **Location**: `/shared/`  

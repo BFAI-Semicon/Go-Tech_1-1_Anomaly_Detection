@@ -29,7 +29,7 @@ Redisキュー消費、ジョブ実行、MLflow記録
 **優先度**: P0（最優先）  
 **依存**: なし
 
-#### 実装内容
+#### T1: 実装内容
 
 ##### 1. プロジェクトディレクトリ構造作成
 
@@ -242,7 +242,7 @@ CMD ["python", "-m", "src.worker.main"]
 }
 ```
 
-#### 受け入れ基準
+#### T1: 受け入れ基準
 
 - ディレクトリ構造が作成され、空の `__init__.py` が配置されている
 - `requirements.txt`、`requirements-dev.txt` に必要な依存関係が記載されている
@@ -259,7 +259,7 @@ CMD ["python", "-m", "src.worker.main"]
 **優先度**: P0  
 **依存**: T1
 
-#### 実装内容
+#### T2: 実装内容
 
 ##### 1. `src/ports/storage_port.py`: StoragePort抽象クラス
 
@@ -309,7 +309,7 @@ class StoragePort(ABC):
 - [x] `src/ports/tracking_port.py`: TrackingPort抽象クラスを実装
 - [x] ユニットテスト作成（`tests/unit/test_ports.py`）
 
-#### 受け入れ基準
+#### T2: 受け入れ基準
 
 - 4つのポート抽象クラスが定義されている
 - 型ヒントが完全に記載されている
@@ -323,7 +323,7 @@ class StoragePort(ABC):
 **優先度**: P0  
 **依存**: T2
 
-#### 実装内容
+#### T3: 実装内容
 
 ##### 1. `src/adapters/filesystem_storage_adapter.py`
 
@@ -340,7 +340,7 @@ class StoragePort(ABC):
 - [ ] 拡張子チェック: entrypoint は `.py` で終わる必要がある
 - [ ] ユニットテスト作成（`tests/unit/test_filesystem_storage_adapter.py`、モックファイルシステム使用）
 
-#### 受け入れ基準
+#### T3: 受け入れ基準
 
 - StoragePortを実装している
 - ユニットテストが通過する（モックファイルシステム使用）
@@ -353,7 +353,7 @@ class StoragePort(ABC):
 **優先度**: P0  
 **依存**: T2
 
-#### 実装内容
+#### T4: 実装内容
 
 ##### 1. `src/adapters/redis_job_queue_adapter.py`
 
@@ -366,7 +366,7 @@ class StoragePort(ABC):
 - [ ] 接続プール設定
 - [ ] ユニットテスト作成（`tests/unit/test_redis_job_queue_adapter.py`、fakeredis使用）
 
-#### 受け入れ基準
+#### T4: 受け入れ基準
 
 - JobQueuePortを実装している
 - ユニットテストが通過する（fakeredis使用）
@@ -379,7 +379,7 @@ class StoragePort(ABC):
 **優先度**: P0  
 **依存**: T2
 
-#### 実装内容
+#### T5: 実装内容
 
 ##### 1. `src/adapters/redis_job_status_adapter.py`
 
@@ -394,7 +394,7 @@ class StoragePort(ABC):
 - [ ] TTL設定: 90日
 - [ ] ユニットテスト作成（`tests/unit/test_redis_job_status_adapter.py`、fakeredis使用）
 
-#### 受け入れ基準
+#### T5: 受け入れ基準
 
 - JobStatusPortを実装している
 - ユニットテストが通過する（fakeredis使用）
@@ -407,7 +407,7 @@ class StoragePort(ABC):
 **優先度**: P1  
 **依存**: T2
 
-#### 実装内容
+#### T6: 実装内容
 
 ##### 1. `src/adapters/mlflow_tracking_adapter.py`
 
@@ -422,7 +422,7 @@ class StoragePort(ABC):
 - [ ] `MLFLOW_TRACKING_URI` 環境変数から取得する実装
 - [ ] ユニットテスト作成（`tests/unit/test_mlflow_tracking_adapter.py`、モックMLflow使用）
 
-#### 受け入れ基準
+#### T6: 受け入れ基準
 
 - TrackingPortを実装している
 - ユニットテストが通過する（モックMLflow使用）
@@ -434,7 +434,7 @@ class StoragePort(ABC):
 **優先度**: P0  
 **依存**: T3
 
-#### 実装内容
+#### T7: 実装内容
 
 ##### 1. `src/domain/create_submission.py`
 
@@ -463,7 +463,7 @@ class CreateSubmission:
 - [ ] パストラバーサルチェック: `entrypoint`, `config_file` に `..`, `/` が含まれないこと
 - [ ] ユニットテスト作成（`tests/unit/test_create_submission.py`、モックStoragePort使用）
 
-#### 受け入れ基準
+#### T7: 受け入れ基準
 
 - ユニットテストが通過する（モックStoragePort使用）
 - バリデーションエラーが適切に発生する
@@ -475,7 +475,7 @@ class CreateSubmission:
 **優先度**: P0  
 **依存**: T4, T5
 
-#### 実装内容
+#### T8: 実装内容
 
 ##### 1. `src/domain/enqueue_job.py`
 
@@ -511,7 +511,7 @@ class EnqueueJob:
 - [ ] Redis カウンター実装 (`INCR` + `EXPIRE`)
 - [ ] ユニットテスト作成（`tests/unit/test_enqueue_job.py`、モックポート使用）
 
-#### 受け入れ基準
+#### T8: 受け入れ基準
 
 - ユニットテストが通過する
 - レート制限が動作する
@@ -524,7 +524,7 @@ class EnqueueJob:
 **優先度**: P1  
 **依存**: T5
 
-#### 実装内容
+#### T9: 実装内容
 
 ##### 1. `src/domain/get_job_status.py`
 
@@ -564,7 +564,7 @@ class GetJobResults:
         }
 ```
 
-#### 受け入れ基準
+#### T9: 受け入れ基準
 
 - ユニットテストが通過する
 
@@ -575,7 +575,7 @@ class GetJobResults:
 **優先度**: P0  
 **依存**: T7
 
-#### 実装内容
+#### T10: 実装内容
 
 ##### 1. `src/api/submissions.py`
 
@@ -611,7 +611,7 @@ async def create_submission(
 - [ ] パストラバーサル防止実装
 - [ ] ユニットテスト作成（`tests/unit/test_api_submissions.py`）
 
-#### 受け入れ基準
+#### T10: 受け入れ基準
 
 - エンドポイントが動作する
 - 認証が動作する
@@ -625,9 +625,9 @@ async def create_submission(
 **優先度**: P0  
 **依存**: T8
 
-#### 実装内容
+#### T11: 実装内容
 
-##### 1. `src/api/jobs.py`
+##### 1. `src/api/jobs.py` (POST /jobs)
 
 - [ ] POST /jobs エンドポイント実装
 - [ ] EnqueueJob.execute呼び出し実装
@@ -655,7 +655,7 @@ class CreateJobRequest(BaseModel):
     config: Dict[str, Any]
 ```
 
-#### 受け入れ基準
+#### T11: 受け入れ基準
 
 - エンドポイントが動作する
 - ジョブがRedisキューに投入される
@@ -668,9 +668,9 @@ class CreateJobRequest(BaseModel):
 **優先度**: P1  
 **依存**: T9
 
-#### 実装内容
+#### T12: 実装内容
 
-##### 1. `src/api/jobs.py`
+##### 1. `src/api/jobs.py` (GET /jobs/{id})
 
 - [ ] GET /jobs/{job_id}/status エンドポイント実装
 - [ ] GET /jobs/{job_id}/logs エンドポイント実装
@@ -691,7 +691,7 @@ async def get_job_results(job_id: str, user_id: str = Depends(get_current_user))
     # GetJobResults.execute()
 ```
 
-#### 受け入れ基準
+#### T12: 受け入れ基準
 
 - 3つのエンドポイントが動作する
 - 認証が動作する
@@ -704,7 +704,7 @@ async def get_job_results(job_id: str, user_id: str = Depends(get_current_user))
 **優先度**: P0  
 **依存**: T4, T5, T6
 
-#### 実装内容
+#### T13: 実装内容
 
 ##### 1. `src/worker/job_worker.py`
 
@@ -756,7 +756,7 @@ class JobWorker:
 - [ ] status.update(job_id, status=failed, error_message=...) 実装
 - [ ] ユニットテスト作成（`tests/unit/test_job_worker.py`、モックポート使用）
 
-#### 受け入れ基準
+#### T13: 受け入れ基準
 
 - Workerがジョブを取り出して実行できる
 - タイムアウトが動作する
@@ -772,7 +772,7 @@ class JobWorker:
 
 **注**: T1で基本的なdocker-compose.yml（Redis, MLflow）とDockerfile雛形を作成済みです。このタスクではAPI/Workerサービスを有効化し、本番相当の設定を追加します。
 
-#### 実装内容
+#### T14: 実装内容
 
 ##### 1. `docker-compose.yml` 完成（API/Workerサービス有効化）
 
@@ -866,7 +866,7 @@ volumes:
 - [ ] MLflow UI（<http://localhost:5010>）
 - [ ] Redisへの接続確認
 
-#### 受け入れ基準
+#### T14: 受け入れ基準
 
 - `docker-compose up` で全サービス（API, Worker, Redis, MLflow）が起動する
 - サービス間の通信が正常に動作する
@@ -880,7 +880,7 @@ volumes:
 **優先度**: P1  
 **依存**: T14
 
-#### 実装内容
+#### T15: 実装内容
 
 ##### 1. `tests/integration/test_e2e.py`
 
@@ -895,7 +895,7 @@ volumes:
 - [ ] サンプル提出ファイル作成（`main.py`, `config.yaml`）
 - [ ] docker-compose環境でのテスト実行環境構築
 
-#### 受け入れ基準
+#### T15: 受け入れ基準
 
 - 全統合テストが通過する
 - カバレッジ80%以上
@@ -907,7 +907,7 @@ volumes:
 **優先度**: P2（低優先）  
 **依存**: T14
 
-#### 実装内容
+#### T16: 実装内容
 
 ##### 1. `src/streamlit/app.py`
 
@@ -933,7 +933,7 @@ streamlit:
     - api
 ```
 
-#### 受け入れ基準
+#### T16: 受け入れ基準
 
 - Streamlit UIが起動する
 - 提出フォームが動作する
@@ -946,7 +946,7 @@ streamlit:
 **優先度**: P2  
 **依存**: T15
 
-#### 実装内容
+#### T17: 実装内容
 
 ##### 1. `tests/performance/locustfile.py`
 
@@ -968,7 +968,7 @@ class LeaderboardUser(HttpUser):
 - [ ] Locustシナリオ実装: 100ユーザー、10提出/時間
 - [ ] P95レイテンシ測定実装
 
-#### 受け入れ基準
+#### T17: 受け入れ基準
 
 - 提出受付: P95 500ms以内
 - ジョブ投入: P95 100ms以内
@@ -981,7 +981,7 @@ class LeaderboardUser(HttpUser):
 **優先度**: P2  
 **依存**: T14
 
-#### 実装内容
+#### T18: 実装内容
 
 ##### 1. `README.md`
 
@@ -998,7 +998,7 @@ class LeaderboardUser(HttpUser):
 
 - [ ] デプロイ手順文書作成
 
-#### 受け入れ基準
+#### T18: 受け入れ基準
 
 - README.mdが完成している
 - セットアップ手順が明確
