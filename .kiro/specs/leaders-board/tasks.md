@@ -383,16 +383,16 @@ class StoragePort(ABC):
 
 ##### 1. `src/adapters/redis_job_status_adapter.py`
 
-- [ ] `create()` 実装: Redis HSET でジョブ状態作成
-- [ ] `update()` 実装: Redis HSET でジョブ状態更新
-- [ ] `get_status()` 実装: Redis HGETALL でジョブ状態取得
+- [x] `create()` 実装: Redis HSET でジョブ状態作成
+- [x] `update()` 実装: Redis HSET でジョブ状態更新
+- [x] `get_status()` 実装: Redis HGETALL でジョブ状態取得
 
 ##### 2. ステータス管理
 
-- [ ] キー設計: `leaderboard:job:{job_id}`
-- [ ] フィールド定義: `status`, `submission_id`, `user_id`, `run_id`, `created_at`, `updated_at`, `error_message`
-- [ ] TTL設定: 90日
-- [ ] ユニットテスト作成（`tests/unit/test_redis_job_status_adapter.py`、fakeredis使用）
+- [x] キー設計: `leaderboard:job:{job_id}`
+- [x] フィールド定義: `status`, `submission_id`, `user_id`, `run_id`, `created_at`, `updated_at`, `error_message`
+- [x] TTL設定: 90日
+- [x] ユニットテスト作成（`tests/unit/test_redis_job_status_adapter.py`、fakeredis使用）
 
 #### T5: 受け入れ基準
 
