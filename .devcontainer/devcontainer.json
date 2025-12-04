@@ -2,7 +2,6 @@
 // README at: https://github.com/devcontainers/templates/tree/main/src/python
 {
 	"name": "LeadersBoard Dev",
-	
 	// Use docker-compose for development environment
 	"dockerComposeFile": [
 		"../LeadersBoard/docker-compose.yml",
@@ -10,10 +9,8 @@
 	],
 	"service": "api",
 	"workspaceFolder": "/workspaces/2025",
-
 	// Features to add to the dev container. More info: https://containers.dev/features.
 	// "features": {},
-
 	// Configure tool-specific properties.
 	"customizations": {
 		// Configure properties specific to VS Code.
@@ -28,7 +25,9 @@
 				"csholmq.excel-to-markdown-table",
 				"davidanson.vscode-markdownlint",
 				"eamodio.gitlens",
+				"esbenp.prettier-vscode",
 				"george-alisson.html-preview-vscode",
+				"github.vscode-github-actions",
 				"marp-team.marp-vscode",
 				"mathematic.vscode-pdf",
 				"mhutchie.git-graph",
@@ -46,10 +45,12 @@
 			]
 		}
 	},
-	
 	// Forward ports for API, MLflow, and Redis
-	"forwardPorts": [8010, 5010, 6379],
-
+	"forwardPorts": [
+		8010,
+		5010,
+		6379
+	],
 	// Use 'portsAttributes' to set default properties for specific forwarded ports. 
 	// More info: https://containers.dev/implementors/json_reference/#port-attributes
 	"portsAttributes": {
@@ -66,10 +67,8 @@
 			"onAutoForward": "silent"
 		}
 	},
-
 	// Use 'postCreateCommand' to run commands after the container is created.
 	"postCreateCommand": "cd /workspaces/2025/LeadersBoard && pip3 install -r requirements-dev.txt && cd /workspaces/2025 && pip3 install -r requirements.txt && npx cc-sdd@latest --cursor --lang ja || true",
-
 	// Run as vscode user (UID 1000) for host compatibility
 	"remoteUser": "vscode",
 	"mounts": [

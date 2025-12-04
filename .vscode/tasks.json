@@ -2,9 +2,15 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "Black Format",
+      "label": "Ruff Check",
       "type": "shell",
-      "command": "cd LeadersBoard && black .",
+      "command": "cd LeadersBoard && ruff check .",
+      "problemMatcher": []
+    },
+    {
+      "label": "Ruff Fix",
+      "type": "shell",
+      "command": "cd LeadersBoard && ruff check --fix .",
       "problemMatcher": []
     }
   ]

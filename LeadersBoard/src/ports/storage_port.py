@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import BinaryIO, Dict, Iterable
+from collections.abc import Iterable
+from typing import BinaryIO
 
 
 class StoragePort(ABC):
@@ -10,7 +11,7 @@ class StoragePort(ABC):
         self,
         submission_id: str,
         files: Iterable[BinaryIO],
-        metadata: Dict[str, str],
+        metadata: dict[str, str],
     ) -> None:
         """提出ファイルとメタデータを保存"""
         ...
@@ -21,7 +22,7 @@ class StoragePort(ABC):
         ...
 
     @abstractmethod
-    def load_metadata(self, submission_id: str) -> Dict[str, str]:
+    def load_metadata(self, submission_id: str) -> dict[str, str]:
         """提出メタデータ (entrypoint, config_file等) を取得"""
         ...
 

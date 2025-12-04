@@ -25,10 +25,10 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt
 
-      - name: Run black
+      - name: Run ruff
         run: |
           cd LeadersBoard
-          black --check .
+          ruff check .
 
       - name: Run unit tests
         run: |

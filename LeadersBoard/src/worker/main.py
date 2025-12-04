@@ -1,8 +1,8 @@
 """LeadersBoard Worker - Main entry point."""
 
 import logging
-import sys
 import signal
+import sys
 import threading
 import time
 

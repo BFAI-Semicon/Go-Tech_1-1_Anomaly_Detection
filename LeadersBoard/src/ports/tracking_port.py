@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Dict, Any
+from typing import Any
 
 
 class TrackingPort(ABC):
@@ -11,12 +11,12 @@ class TrackingPort(ABC):
         ...
 
     @abstractmethod
-    def log_params(self, params: Dict[str, Any]) -> None:
+    def log_params(self, params: dict[str, Any]) -> None:
         """パラメータを記録"""
         ...
 
     @abstractmethod
-    def log_metrics(self, metrics: Dict[str, float]) -> None:
+    def log_metrics(self, metrics: dict[str, float]) -> None:
         """メトリクスを記録"""
         ...
 
