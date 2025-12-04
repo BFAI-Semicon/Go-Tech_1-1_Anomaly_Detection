@@ -357,14 +357,14 @@ class StoragePort(ABC):
 
 ##### 1. `src/adapters/redis_job_queue_adapter.py`
 
-- [ ] `enqueue()` 実装: Redis LPUSH でジョブ投入、ペイロード: `{job_id, submission_id, entrypoint, config_file, config}`
-- [ ] `dequeue()` 実装: Redis BRPOP でジョブ取り出し（タイムアウト30秒）
+- [x] `enqueue()` 実装: Redis LPUSH でジョブ投入、ペイロード: `{job_id, submission_id, entrypoint, config_file, config}`
+- [x] `dequeue()` 実装: Redis BRPOP でジョブ取り出し（タイムアウト30秒）
 
 ##### 2. Redis接続管理
 
-- [ ] `redis-py` 使用して接続実装
-- [ ] 接続プール設定
-- [ ] ユニットテスト作成（`tests/unit/test_redis_job_queue_adapter.py`、fakeredis使用）
+- [x] `redis-py` 使用して接続実装
+- [x] 接続プール設定
+- [x] ユニットテスト作成（`tests/unit/test_redis_job_queue_adapter.py`、fakeredis使用）
 
 #### T4: 受け入れ基準
 

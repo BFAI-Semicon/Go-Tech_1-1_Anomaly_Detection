@@ -68,6 +68,8 @@ libmetis
 libnauty
 libopencv
 libsuitesparse
+lindex
+llen
 LOCO
 locustfile
 LPUSH
