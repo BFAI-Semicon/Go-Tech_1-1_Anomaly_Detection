@@ -13,5 +13,12 @@
       "command": "cd LeadersBoard && ruff check --fix .",
       "problemMatcher": []
     }
+    ,
+    {
+      "label": "Unit Tests",
+      "type": "shell",
+      "command": "cd LeadersBoard && pytest tests/unit --maxfail=1",
+      "problemMatcher": []
+    }
   ]
 }
