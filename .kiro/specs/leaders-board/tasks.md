@@ -327,18 +327,18 @@ class StoragePort(ABC):
 
 ##### 1. `src/adapters/filesystem_storage_adapter.py`
 
-- [ ] `save()` 実装: `/shared/submissions/{submission_id}/` にファイル保存、`metadata.json` 保存
-- [ ] `load()` 実装: 提出ディレクトリパス返却
-- [ ] `load_metadata()` 実装: `metadata.json` 読み込み
-- [ ] `exists()` 実装: ディレクトリ存在確認
-- [ ] `validate_entrypoint()` 実装: パストラバーサル防止、拡張子チェック、存在確認
-- [ ] `load_logs()` 実装: `/shared/logs/{job_id}.log` 読み込み
+- [x] `save()` 実装: `/shared/submissions/{submission_id}/` にファイル保存、`metadata.json` 保存
+- [x] `load()` 実装: 提出ディレクトリパス返却
+- [x] `load_metadata()` 実装: `metadata.json` 読み込み
+- [x] `exists()` 実装: ディレクトリ存在確認
+- [x] `validate_entrypoint()` 実装: パストラバーサル防止、拡張子チェック、存在確認
+- [x] `load_logs()` 実装: `/shared/logs/{job_id}.log` 読み込み
 
 ##### 2. バリデーション実装
 
-- [ ] パストラバーサル防止: `..`, `/` を含むパスを拒否
-- [ ] 拡張子チェック: entrypoint は `.py` で終わる必要がある
-- [ ] ユニットテスト作成（`tests/unit/test_filesystem_storage_adapter.py`、モックファイルシステム使用）
+- [x] パストラバーサル防止: `..`, `/` を含むパスを拒否
+- [x] 拡張子チェック: entrypoint は `.py` で終わる必要がある
+- [x] ユニットテスト作成（`tests/unit/test_filesystem_storage_adapter.py`、モックファイルシステム使用）
 
 #### T3: 受け入れ基準
 
