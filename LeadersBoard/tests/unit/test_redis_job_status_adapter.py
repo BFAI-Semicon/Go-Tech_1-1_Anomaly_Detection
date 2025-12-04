@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import fakeredis
-import pytest
 
 from src.adapters.redis_job_status_adapter import RedisJobStatusAdapter
 from src.ports.job_status_port import JobStatus
