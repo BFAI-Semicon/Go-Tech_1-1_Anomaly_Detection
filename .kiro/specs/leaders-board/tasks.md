@@ -434,12 +434,10 @@ class StoragePort(ABC):
 
 #### T7: 実装内容
 
-##### 1. `src/domain/create_submission.py`
-
-- [ ] CreateSubmissionクラス実装
-- [ ] バリデーションロジック実装
-- [ ] エントリポイント検証実装
-- [ ] storage.save呼び出し実装
+- [x] CreateSubmissionクラス実装
+- [x] バリデーションロジック実装
+- [x] エントリポイント検証実装
+- [x] storage.save呼び出し実装
 
 ```python
 class CreateSubmission:
@@ -456,10 +454,10 @@ class CreateSubmission:
 
 ##### 2. バリデーション
 
-- [ ] ファイルサイズ上限チェック: 100MB
-- [ ] 拡張子チェック: `.py`, `.yaml`, `.zip`, `.tar.gz`
-- [ ] パストラバーサルチェック: `entrypoint`, `config_file` に `..`, `/` が含まれないこと
-- [ ] ユニットテスト作成（`tests/unit/test_create_submission.py`、モックStoragePort使用）
+- [x] ファイルサイズ上限チェック: 100MB
+- [x] 拡張子チェック: `.py`, `.yaml`, `.zip`, `.tar.gz`
+- [x] パストラバーサルチェック: `entrypoint`, `config_file` に `..`, `/` が含まれないこと
+- [x] ユニットテスト作成（`tests/unit/test_create_submission.py`、モックStoragePort使用）
 
 #### T7: 受け入れ基準
 
