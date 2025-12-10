@@ -475,13 +475,13 @@ class CreateSubmission:
 
 ##### 1. `src/domain/enqueue_job.py`
 
-- [ ] EnqueueJobクラス実装
-- [ ] submission存在確認実装
-- [ ] メタデータ取得実装
-- [ ] job_id生成（冪等性キー）実装
-- [ ] レート制限チェック実装
-- [ ] queue.enqueue呼び出し実装
-- [ ] status.create呼び出し実装
+- [x] EnqueueJobクラス実装
+- [x] submission存在確認実装
+- [x] メタデータ取得実装
+- [x] job_id生成（冪等性キー）実装
+- [x] レート制限チェック実装
+- [x] queue.enqueue呼び出し実装
+- [x] status.create呼び出し実装
 
 ```python
 class EnqueueJob:
@@ -502,10 +502,10 @@ class EnqueueJob:
 
 ##### 2. レート制限
 
-- [ ] 提出回数制限実装: 1ユーザーあたり 10提出/時間
-- [ ] 同時実行制限実装: 3件
-- [ ] Redis カウンター実装 (`INCR` + `EXPIRE`)
-- [ ] ユニットテスト作成（`tests/unit/test_enqueue_job.py`、モックポート使用）
+- [x] 提出回数制限実装: 1ユーザーあたり 10提出/時間
+- [x] 同時実行制限実装: 3件
+- [x] Redis カウンター実装 (`INCR` + `EXPIRE`)
+- [x] ユニットテスト作成（`tests/unit/test_enqueue_job.py`、モックポート使用）
 
 #### T8: 受け入れ基準
 

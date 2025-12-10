@@ -50,3 +50,16 @@ class RedisJobStatusAdapter(JobStatusPort):
         if not raw:
             return None
         return {k.decode(): v.decode() for k, v in raw.items()}
+
+    def count_running(self, user_id: str) -> int:
+        running = 0
+        prefix = self.key_prefix
+        for key in self.redis.scan_iter(f"{prefix}*"):
+            raw = self.redis.hgetall(key)
+            if not raw:
+                continue
+            owner = raw.get(b"user_id")
+            status = raw.get(b"status")
+            if owner and owner.decode() == user_id and status and status.decode() == JobStatus.RUNNING.value:
+                running += 1
+        return running

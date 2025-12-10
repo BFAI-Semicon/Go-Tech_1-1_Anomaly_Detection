@@ -27,3 +27,8 @@ class JobStatusPort(ABC):
     def get_status(self, job_id: str) -> dict[str, Any] | None:
         """ジョブ状態を取得"""
         ...
+
+    @abstractmethod
+    def count_running(self, user_id: str) -> int:
+        """指定ユーザーの running 状態の件数を取得"""
+        ...
