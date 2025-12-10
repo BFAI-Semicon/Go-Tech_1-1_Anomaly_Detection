@@ -53,4 +53,5 @@ Kiro-style Spec Driven Development implementation on AI-DLC (AI Development Life
 ## コーディングルール
 
 - .mdファイルを編集した場合、markdownlintを実行し問題を解消する
-- .pyファイルを編集した場合、ruff --fixを実行する
+- .pyファイルを編集した場合、`ruff check --fix .` を実行する
+- .pyファイルを編集した場合、`mypy` の警告・エラーがあれば解消する
