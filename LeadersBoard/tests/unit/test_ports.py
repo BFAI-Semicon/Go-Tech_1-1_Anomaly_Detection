@@ -52,6 +52,9 @@ class InMemoryStatus(JobStatusPort):
     def get_status(self, job_id):
         return {"job_id": job_id, "status": JobStatus.PENDING.value}
 
+    def count_running(self, user_id: str) -> int:
+        return 0
+
 
 class InMemoryTracking(TrackingPort):
     def start_run(self, run_name):
