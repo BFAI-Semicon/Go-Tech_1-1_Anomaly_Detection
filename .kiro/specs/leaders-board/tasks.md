@@ -409,18 +409,16 @@ class StoragePort(ABC):
 
 #### T6: 実装内容
 
-##### 1. `src/adapters/mlflow_tracking_adapter.py`
-
-- [ ] `start_run()` 実装: `mlflow.start_run()` ラップ
-- [ ] `log_params()` 実装: `mlflow.log_params()` ラップ
-- [ ] `log_metrics()` 実装: `mlflow.log_metrics()` ラップ
-- [ ] `log_artifact()` 実装: `mlflow.log_artifact()` ラップ
-- [ ] `end_run()` 実装: `mlflow.end_run()` ラップ、run_id返却
+- [x] `start_run()` 実装: `mlflow.start_run()` ラップ
+- [x] `log_params()` 実装: `mlflow.log_params()` ラップ
+- [x] `log_metrics()` 実装: `mlflow.log_metrics()` ラップ
+- [x] `log_artifact()` 実装: `mlflow.log_artifact()` ラップ
+- [x] `end_run()` 実装: `mlflow.end_run()` ラップ、run_id返却
 
 ##### 2. MLflow接続設定
 
-- [ ] `MLFLOW_TRACKING_URI` 環境変数から取得する実装
-- [ ] ユニットテスト作成（`tests/unit/test_mlflow_tracking_adapter.py`、モックMLflow使用）
+- [x] `MLFLOW_TRACKING_URI` 環境変数から取得する実装
+- [x] ユニットテスト作成（`tests/unit/test_mlflow_tracking_adapter.py`、モックMLflow使用）
 
 #### T6: 受け入れ基準
 
