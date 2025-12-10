@@ -524,8 +524,8 @@ class EnqueueJob:
 
 ##### 1. `src/domain/get_job_status.py`
 
-- [ ] GetJobStatusクラス実装
-- [ ] status.get_status呼び出し実装
+- [x] GetJobStatusクラス実装
+- [x] status.get_status呼び出し実装
 
 ```python
 class GetJobStatus:
@@ -536,12 +536,10 @@ class GetJobStatus:
         return self.status.get_status(job_id)
 ```
 
-##### 2. `src/domain/get_job_results.py`
-
-- [ ] GetJobResultsクラス実装
-- [ ] MLflow UIリンク生成実装
-- [ ] MLflow RESTリンク生成実装
-- [ ] ユニットテスト作成（`tests/unit/test_get_job_status.py`, `tests/unit/test_get_job_results.py`）
+- [x] GetJobResultsクラス実装
+- [x] MLflow UIリンク生成実装
+- [x] MLflow RESTリンク生成実装
+- [x] ユニットテスト作成（`tests/unit/test_get_job_status.py`, `tests/unit/test_get_job_results.py`）
 
 ```python
 class GetJobResults:
@@ -550,13 +548,13 @@ class GetJobResults:
         self.mlflow_uri = mlflow_uri
 
     def execute(self, job_id: str) -> Dict[str, Any]:
-        status = self.status.get_status(job_id)
+        status = self.status.get_status(job_id) or {}
         run_id = status.get("run_id")
         return {
             "job_id": job_id,
             "run_id": run_id,
             "mlflow_ui_link": f"{self.mlflow_uri}/#/experiments/1/runs/{run_id}",
-            "mlflow_rest_link": f"{self.mlflow_uri}/api/2.0/mlflow/runs/get?run_id={run_id}"
+            "mlflow_rest_link": f"{self.mlflow_uri}/api/2.0/mlflow/runs/get?run_id={run_id}",
         }
 ```
 
