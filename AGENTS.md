@@ -1,6 +1,7 @@
 # AI-DLC and Spec-Driven Development
 
-Kiro-style Spec Driven Development implementation on AI-DLC (AI Development Life Cycle)
+Kiro-style Spec Driven Development implementation on AI-DLC
+(AI Development Life Cycle)
 
 ## Project Context
 
@@ -21,7 +22,10 @@ Kiro-style Spec Driven Development implementation on AI-DLC (AI Development Life
 
 ## Development Guidelines
 
-- Think in English, generate responses in Japanese. All Markdown content written to project files (e.g., requirements.md, design.md, tasks.md, research.md, validation reports) MUST be written in the target language configured for this specification (see spec.json.language).
+- Think in English, and generate responses in Japanese.  
+  All Markdown content for project files must use the target language for this specification  
+  (`spec.json.language`).  
+  Applies to requirements, design, tasks, research, and validation reports.
 
 ## Minimal Workflow
 
@@ -42,7 +46,11 @@ Kiro-style Spec Driven Development implementation on AI-DLC (AI Development Life
 - 3-phase approval workflow: Requirements → Design → Tasks → Implementation
 - Human review required each phase; use `-y` only for intentional fast-track
 - Keep steering current and verify alignment with `/kiro/spec-status`
-- Follow the user's instructions precisely, and within that scope act autonomously: gather the necessary context and complete the requested work end-to-end in this run, asking questions only when essential information is missing or the instructions are critically ambiguous.
+- Follow the user's instructions precisely,  
+  and within that scope act autonomously.  
+  Gather the necessary context and do the requested work end-to-end in this run.  
+  Ask questions only when essential information is missing  
+  or the instructions are critically ambiguous.
 
 ## Steering Configuration
 
@@ -55,3 +63,5 @@ Kiro-style Spec Driven Development implementation on AI-DLC (AI Development Life
 - .mdファイルを編集した場合、markdownlintを実行し問題を解消する
 - .pyファイルを編集した場合、`ruff check --fix .` を実行する
 - .pyファイルを編集した場合、`mypy` の警告・エラーがあれば解消する
+- Python の変数名はスネークケースとし、単語をアンダースコアなしでつないだ命名がある場合はアンダースコアで区切る
+- ただしクラスを指すエイリアス名については、クラス名と同じアッパーキャメルケースで記述する
