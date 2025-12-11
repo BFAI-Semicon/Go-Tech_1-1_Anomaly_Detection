@@ -2,6 +2,7 @@
 
 from fastapi import FastAPI
 
+from src.api.jobs import router as jobs_router
 from src.api.submissions import router as submissions_router
 
 app = FastAPI(
@@ -24,3 +25,4 @@ async def health() -> dict[str, str]:
 
 
 app.include_router(submissions_router)
+app.include_router(jobs_router)

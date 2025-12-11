@@ -625,9 +625,9 @@ async def create_submission(
 
 ##### 1. `src/api/jobs.py` (POST /jobs)
 
-- [ ] POST /jobs エンドポイント実装
-- [ ] EnqueueJob.execute呼び出し実装
-- [ ] レスポンス返却実装
+- [x] POST /jobs エンドポイント実装
+- [x] EnqueueJob.execute呼び出し実装
+- [x] レスポンス返却実装
 
 ```python
 @router.post("/jobs", status_code=202)
@@ -642,8 +642,8 @@ async def create_job(
 
 ##### 2. リクエストモデル
 
-- [ ] CreateJobRequestモデル定義
-- [ ] ユニットテスト作成（`tests/unit/test_api_jobs.py`）
+- [x] CreateJobRequestモデル定義
+- [x] ユニットテスト作成（`tests/unit/test_api_jobs.py`）
 
 ```python
 class CreateJobRequest(BaseModel):

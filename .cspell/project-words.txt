@@ -101,6 +101,7 @@ Pezze
 plotly
 PRO
 PromptAD
+pycache
 pycodestyle
 Pydantic
 Pyflakes
