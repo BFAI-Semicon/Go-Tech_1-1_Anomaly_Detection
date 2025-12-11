@@ -704,13 +704,13 @@ async def get_job_results(job_id: str, user_id: str = Depends(get_current_user))
 
 ##### 1. `src/worker/job_worker.py`
 
-- [ ] JobWorkerクラス実装
-- [ ] run()メソッド実装（無限ループ、キュー待機）
-- [ ] execute_job()メソッド実装
-- [ ] パス検証実装
-- [ ] subprocess.run実装
-- [ ] run_id取得実装
-- [ ] 状態更新実装
+- [x] JobWorkerクラス実装
+- [x] run()メソッド実装（無限ループ、キュー待機）
+- [x] execute_job()メソッド実装
+- [x] パス検証実装
+- [x] subprocess.run実装
+- [x] run_id取得実装
+- [x] 状態更新実装
 
 ```python
 class JobWorker:
@@ -751,15 +751,15 @@ class JobWorker:
 
 ##### 2. タイムアウト設定
 
-- [ ] `small`クラス: 30分タイムアウト実装
-- [ ] `medium`クラス: 60分タイムアウト実装
+- [x] `small`クラス: 30分タイムアウト実装
+- [x] `medium`クラス: 60分タイムアウト実装
 
 ##### 3. エラーハンドリング
 
-- [ ] OOM検知・エラー処理実装
-- [ ] タイムアウト検知・エラー処理実装
-- [ ] status.update(job_id, status=failed, error_message=...) 実装
-- [ ] ユニットテスト作成（`tests/unit/test_job_worker.py`、モックポート使用）
+- [x] OOM検知・エラー処理実装
+- [x] タイムアウト検知・エラー処理実装
+- [x] status.update(job_id, status=failed, error_message=...) 実装
+- [x] ユニットテスト作成（`tests/unit/test_job_worker.py`、モックポート使用）
 
 #### T13: 受け入れ基準
 
