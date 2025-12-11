@@ -9,6 +9,7 @@ appuser
 asyncio
 AUPR
 AUROC
+autouse
 Barusco
 Borsatti
 BRPOP
@@ -30,6 +31,7 @@ Davide
 debugpy
 DeepPCB
 devcontainers
+devtoken
 Dice
 DiffusionAD
 dotenv

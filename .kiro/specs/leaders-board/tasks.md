@@ -63,7 +63,8 @@ leaders-board/
 
 **注**:
 
-- MLflowは公式イメージ（`ghcr.io/mlflow/mlflow:latest`）を使用するため、基本的にはDockerfileは不要です。認証追加やプラグイン導入などのカスタマイズが必要な場合のみ、`docker/mlflow.Dockerfile` を作成します。
+- MLflowは公式イメージ（`ghcr.io/mlflow/mlflow:latest`）を使うため、基本的にはDockerfile不要です。  
+  認証やプラグインのカスタマイズが必要なときだけ `docker/mlflow.Dockerfile` を追加してください。
 - `api.Dockerfile`はマルチステージビルドで`dev`（開発）と`prod`（本番）の2ステージを持ちます。
 - `docker-compose.override.yml`は開発時に自動適用され、apiのtargetを`dev`に切り替えます。
 
@@ -444,7 +445,14 @@ class CreateSubmission:
     def __init__(self, storage: StoragePort):
         self.storage = storage
 
-    def execute(self, user_id: str, files: List[BinaryIO], entrypoint: str = "main.py", config_file: str = "config.yaml", metadata: Dict[str, Any] = None) -> str:
+    def execute(
+        self,
+        user_id: str,
+        files: List[BinaryIO],
+        entrypoint: str = "main.py",
+        config_file: str = "config.yaml",
+        metadata: Dict[str, Any] = None,
+    ) -> str:
         # 1. バリデーション (ファイルサイズ、拡張子)
         # 2. submission_id 生成
         # 3. エントリポイント検証
@@ -571,12 +579,10 @@ class GetJobResults:
 
 #### T10: 実装内容
 
-##### 1. `src/api/submissions.py`
-
-- [ ] POST /submissions エンドポイント実装
-- [ ] マルチパートファイルアップロード処理実装
-- [ ] CreateSubmission.execute呼び出し実装
-- [ ] レスポンス返却実装
+- [x] POST /submissions エンドポイント実装
+- [x] マルチパートファイルアップロード処理実装
+- [x] CreateSubmission.execute呼び出し実装
+- [x] レスポンス返却実装
 
 ```python
 @router.post("/submissions", status_code=201)
@@ -593,17 +599,13 @@ async def create_submission(
     # 4. レスポンス返却
 ```
 
-##### 2. 認証ミドルウェア
+- [x] `get_current_user()` 実装: `Authorization: Bearer <token>` 検証
+- [x] 環境変数 `API_TOKENS` と照合実装
 
-- [ ] `get_current_user()` 実装: `Authorization: Bearer <token>` 検証
-- [ ] 環境変数 `API_TOKENS` と照合実装
-
-##### 3. バリデーション
-
-- [ ] ファイルサイズ上限チェック: 100MB
-- [ ] 拡張子チェック実装
-- [ ] パストラバーサル防止実装
-- [ ] ユニットテスト作成（`tests/unit/test_api_submissions.py`）
+- [x] ファイルサイズ上限チェック: 100MB
+- [x] 拡張子チェック実装
+- [x] パストラバーサル防止実装
+- [x] ユニットテスト作成（`tests/unit/test_api_submissions.py`）
 
 #### T10: 受け入れ基準
 
@@ -732,7 +734,16 @@ class JobWorker:
         # 1. status.update(job_id, status=running)
         # 2. submission_dir = storage.load(submission_id)
         # 3. パス検証
-        # 4. subprocess.run(["python", f"{submission_dir}/{entrypoint}", "--config", f"{submission_dir}/{config_file}", "--output", f"/shared/artifacts/{job_id}"])
+        # 4. subprocess.run(
+        #     [
+        #         "python",
+        #         f"{submission_dir}/{entrypoint}",
+        #         "--config",
+        #         f"{submission_dir}/{config_file}",
+        #         "--output",
+        #         f"/shared/artifacts/{job_id}",
+        #     ]
+        # )
         # 5. タイムアウト・リソース制限適用
         # 6. run_id 取得（標準出力またはMLflow API）
         # 7. status.update(job_id, status=completed, run_id=run_id)
