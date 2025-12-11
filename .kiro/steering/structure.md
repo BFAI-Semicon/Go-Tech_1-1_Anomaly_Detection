@@ -23,6 +23,18 @@ Clean-lite設計（ドメイン/ポート/アダプタ）を採用し、ドメ�
 - `JobStatusPort`: 状態の保存/参照
 - `TrackingPort`: メトリクス記録・`run_id` 生成（Workerのみ使用）
 
+### レート制限層
+
+**Location**: `/src/ports/rate_limit_port.py` + `/src/adapters/redis_rate_limit_adapter.py`  
+**Purpose**: ユーザーごとの提出頻度を制御する。  
+API 側で Redis カウンター（`leaderboard:rate:{user_id}`）を参照し、3600 秒の時間ウィンドウ内で 10 回を超える提出を拒否する。
+**Pattern**:
+
+- `RateLimitPort.increment_submission` は `RedisRateLimitAdapter` を使って `INCR` + `EXPIRE` で値を更新する。  
+  TTL 3600 秒でリセットされ、`get_submission_count` は現在値を API の再投入やワーカーの判断に返す。
+- `EnqueueJob` では `RateLimitPort` を先行して呼び出し、制限違反を検知する。  
+  合格すれば `JobQueuePort` と `JobStatusPort` に渡してキュー投入し、公平性を維持する。
+
 ### アダプタ層（実装）
 
 **Location**: `/src/adapters/`  
@@ -141,6 +153,9 @@ from src.adapters.filesystem_storage_adapter import FileSystemStorageAdapter
 - **ドメイン**: ビジネスロジック（外部実装に非依存）
 - **ポート**: 抽象インタフェース（実装詳細を隠蔽）
 - **アダプタ**: 具体実装（差し替え可能）
+- **EnqueueJob**: `RateLimitPort` で `MAX_SUBMISSIONS_PER_HOUR` と `MAX_CONCURRENT_RUNNING` を順番に検証し、  
+  Redis カウンターが示す提出数を超えないときだけ `JobQueuePort` と `JobStatusPort` に渡す。  
+  ドメインでレート制限ロジックを分離することで API/Worker はリミッタの内部実装に依存しない。
 
 ### テスト戦略
 

@@ -1,11 +1,16 @@
 from __future__ import annotations
 
 import os
+from functools import lru_cache
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
+from redis import Redis
 
+from src.adapters.redis_job_queue_adapter import RedisJobQueueAdapter
+from src.adapters.redis_job_status_adapter import RedisJobStatusAdapter
+from src.adapters.redis_rate_limit_adapter import RedisRateLimitAdapter
 from src.api.submissions import get_current_user, get_storage
 from src.domain.enqueue_job import EnqueueJob
 from src.domain.get_job_results import GetJobResults
@@ -23,16 +28,25 @@ class CreateJobRequest(BaseModel):
     config: dict[str, Any]
 
 
-def get_job_queue() -> JobQueuePort:
-    raise HTTPException(status_code=501, detail="job queue adapter not configured")
+@lru_cache(maxsize=1)
+def get_redis_client() -> Redis:
+    redis_url = os.getenv("REDIS_URL", "redis://redis:6379/0")
+    return Redis.from_url(redis_url)
 
 
-def get_job_status() -> JobStatusPort:
-    raise HTTPException(status_code=501, detail="job status adapter not configured")
+redis_dep = Depends(get_redis_client)
 
 
-def get_rate_limit() -> RateLimitPort:
-    raise HTTPException(status_code=501, detail="rate limit adapter not configured")
+def get_job_queue(redis_client: Redis = redis_dep) -> JobQueuePort:
+    return RedisJobQueueAdapter(redis_client)
+
+
+def get_job_status(redis_client: Redis = redis_dep) -> JobStatusPort:
+    return RedisJobStatusAdapter(redis_client)
+
+
+def get_rate_limit(redis_client: Redis = redis_dep) -> RateLimitPort:
+    return RedisRateLimitAdapter(redis_client)
 
 
 def get_mlflow_uri() -> str:

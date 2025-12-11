@@ -5,10 +5,10 @@
 	// Use docker-compose for development environment
 	"dockerComposeFile": [
 		"../LeadersBoard/docker-compose.yml",
-		"../LeadersBoard/docker-compose.override.yml"
+		"./docker-compose.override.yml"
 	],
 	"service": "api",
-	"workspaceFolder": "/workspaces/2025",
+	"workspaceFolder": "/app",
 	// Features to add to the dev container. More info: https://containers.dev/features.
 	// "features": {},
 	// Configure tool-specific properties.
@@ -18,7 +18,7 @@
 			"settings": {
 				"python.defaultInterpreterPath": "/usr/local/bin/python",
 				"python.analysis.extraPaths": [
-					"/workspaces/2025/LeadersBoard"
+					"/app/LeadersBoard"
 				]
 			},
 			"extensions": [
@@ -68,7 +68,7 @@
 		}
 	},
 	// Use 'postCreateCommand' to run commands after the container is created.
-	"postCreateCommand": "cd /workspaces/2025/LeadersBoard && pip3 install -r requirements-dev.txt && cd /workspaces/2025 && pip3 install -r requirements.txt && npx cc-sdd@latest --cursor --lang ja || true",
+	"postCreateCommand": "cd /app/LeadersBoard && pip3 install -r requirements-dev.txt && cd /app && pip3 install -r requirements.txt && npx cc-sdd@latest --cursor --lang ja || true",
 	// Run as vscode user (UID 1000) for host compatibility
 	"remoteUser": "vscode",
 	"mounts": [

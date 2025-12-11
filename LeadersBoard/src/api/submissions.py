@@ -37,9 +37,8 @@ def _parse_metadata(metadata: str) -> dict[str, str]:
 
 
 def get_storage() -> StoragePort:
-    project_root = Path(__file__).resolve().parents[3]
-    upload_root = Path(os.getenv("UPLOAD_ROOT", project_root / "uploads"))
-    logs_root = Path(os.getenv("LOG_ROOT", project_root / "logs"))
+    upload_root = Path(os.getenv("UPLOAD_ROOT", "/shared/submissions"))
+    logs_root = Path(os.getenv("LOG_ROOT", "/shared/logs"))
     upload_root.mkdir(parents=True, exist_ok=True)
     logs_root.mkdir(parents=True, exist_ok=True)
     return FileSystemStorageAdapter(upload_root, logs_root=logs_root)

@@ -781,11 +781,11 @@ class JobWorker:
 
 ##### 1. `docker-compose.yml` 完成（API/Workerサービス有効化）
 
-- [ ] APIサービスのコメントを外して有効化
-- [ ] Workerサービスのコメントを外して有効化
-- [ ] GPU設定追加
-- [ ] read_only設定追加（Worker）
-- [ ] 環境変数を`.env`から読み込むよう設定
+- [x] APIサービスのコメントを外して有効化
+- [x] Workerサービスのコメントを外して有効化
+- [x] GPU設定追加
+- [x] read_only設定追加（Worker）
+- [x] 環境変数を`.env`から読み込むよう設定
 
 ```yaml
 version: '3.8'
@@ -856,20 +856,18 @@ volumes:
   redis-data:
 ```
 
-##### 2. Dockerfile完成
-
-- [ ] `docker/api.Dockerfile` 完成: 依存関係インストール、ソースコピー、起動コマンド
-- [ ] `docker/worker.Dockerfile` 完成: GPU対応、anomalib、起動コマンド
+- [x] `docker/api.Dockerfile` 完成: 依存関係インストール、ソースコピー、起動コマンド
+- [x] `docker/worker.Dockerfile` 完成: GPU対応、anomalib、起動コマンド
 - [ ] `docker/mlflow.Dockerfile` 作成（任意）: カスタマイズが必要な場合のみ（認証、プラグイン等）
 
 **注**: MLflowは基本的に公式イメージ（`ghcr.io/mlflow/mlflow:latest`）を使用します。
 
 ##### 3. 動作確認
 
-- [ ] `docker-compose up` で全サービスが起動することを確認
-- [ ] API ヘルスチェック（<http://localhost:8010/docs>）
-- [ ] MLflow UI（<http://localhost:5010>）
-- [ ] Redisへの接続確認
+- [x] `docker-compose up` で全サービスが起動することを確認
+- [x] API ヘルスチェック（<http://localhost:8010/docs>）
+- [x] MLflow UI（<http://localhost:5010>）
+- [x] Redisへの接続確認
 
 #### T14: 受け入れ基準
 

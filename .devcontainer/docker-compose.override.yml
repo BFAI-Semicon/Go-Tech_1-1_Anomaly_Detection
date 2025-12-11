@@ -6,17 +6,15 @@ services:
     build:
       target: dev  # Use development stage
     volumes:
-      - ..:/workspaces/2025:cached
+      - ..:/app:cached
       - shared:/shared
     # Keep container running for development (run API manually)
     command: sleep infinity
     # Enable debugging
+    env_file:
+      - .env
     environment:
-      - REDIS_URL=redis://redis:6379/0
-      - MLFLOW_TRACKING_URI=http://mlflow:5010
-      - UPLOAD_ROOT=/shared/submissions
-      - ARTIFACT_ROOT=/shared/artifacts
-      - PYTHONPATH=/workspaces/2025/LeadersBoard
+      - PYTHONPATH=/app/LeadersBoard
 
 volumes:
   shared:
