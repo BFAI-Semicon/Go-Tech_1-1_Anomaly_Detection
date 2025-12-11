@@ -668,10 +668,10 @@ class CreateJobRequest(BaseModel):
 
 ##### 1. `src/api/jobs.py` (GET /jobs/{id})
 
-- [ ] GET /jobs/{job_id}/status エンドポイント実装
-- [ ] GET /jobs/{job_id}/logs エンドポイント実装
-- [ ] GET /jobs/{job_id}/results エンドポイント実装
-- [ ] ユニットテスト作成（`tests/unit/test_api_jobs_get.py`）
+- [x] GET /jobs/{job_id}/status エンドポイント実装
+- [x] GET /jobs/{job_id}/logs エンドポイント実装
+- [x] GET /jobs/{job_id}/results エンドポイント実装
+- [x] ユニットテスト作成（`tests/unit/test_api_jobs_get.py`）
 
 ```python
 @router.get("/jobs/{job_id}/status")

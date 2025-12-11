@@ -26,7 +26,7 @@ client = TestClient(app)
 
 
 @pytest.fixture(autouse=True)
-def clear_overrides() -> Generator[None, None, None]:
+def clear_overrides() -> Generator[None]:
     yield
     app.dependency_overrides.clear()
 
