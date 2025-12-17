@@ -187,16 +187,15 @@ from src.adapters.filesystem_storage_adapter import FileSystemStorageAdapter
 
 - **ユニットテスト**: ドメイン・ポート実装（モックアダプタ使用）
   - **Location**: `/tests/unit/`
-  - **Count**: 52件
-  - **Focus**: ドメインロジック100%カバレッジ達成
+  - **Focus**: ドメインロジック・アダプタの単体テスト
 - **統合テスト**: docker-compose環境でエンドツーエンド（実Redis・MLflow使用）
   - **Location**: `/tests/integration/`
-  - **Count**: 7件
   - **Coverage**: エンドツーエンドフロー、セキュリティ（パストラバーサル）、エラーハンドリング（OOM、タイムアウト）
 - **境界テスト**: ファイルサイズ上限、タイムアウト、重複投入、OOM等
-- **Overall Coverage**: 90%（目標80%を超過達成）
+- **Overall Coverage**: 46.3%（目標80%、継続的改善中）
+- **Test Functions**: 77件
 
 ## Maintenance
 
 - updated_at: 2025-12-17
-- reason: Worker実装パターンを更新（投稿者のコードはMLflow非依存、Workerがmetrics.jsonを読み取ってTrackingPort経由でMLflowに記録）
+- reason: プロジェクト状態を最新化（Streamlit UI削除、テストカバレッジ実測値反映、実装進捗更新）

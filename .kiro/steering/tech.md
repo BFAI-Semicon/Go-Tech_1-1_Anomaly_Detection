@@ -19,7 +19,7 @@
 - **Queue**: Redis（非同期ジョブ投入、at-least-once配信）
 - **Worker**: GPUコンテナ（nvidia-container-runtime、anomalib学習・評価）
 - **Experiment Tracking**: MLflow Tracking Server（パラメータ・メトリクス・アーティファクト記録）
-- **UI (Optional)**: Streamlit（提出フォーム、ジョブ一覧、MLflowリンク）
+- **UI**: MLflow UI（実験可視化）、将来的にStreamlit UI追加予定
 
 ### Container Runtime
 
@@ -78,8 +78,8 @@
 
 - **Framework**: `pytest`
 - **Coverage**: 80%以上推奨（ドメインロジック・ポート実装は必須）
-  - **現在の達成状況**: 90%（T15統合テスト完了時点）
-  - **テスト数**: 59件（ユニット52件、統合7件）
+  - **現在の達成状況**: 46.3%（継続的改善中）
+  - **テスト数**: 77件のテスト関数
 - **Integration Test**: docker-compose環境でエンドツーエンドテスト
 - **Test Organization**:
   - `/tests/unit/` - モックアダプタを使用した高速テスト
@@ -196,4 +196,4 @@ docker-compose -f docker-compose.yml up --build
 ## Maintenance
 
 - updated_at: 2025-12-17
-- reason: Worker実装パターンを更新（投稿者のコードはMLflow非依存、Workerがmetrics.jsonを読み取ってTrackingPort経由でMLflowに記録）
+- reason: プロジェクト状態を最新化（Streamlit UI削除、テストカバレッジ実測値反映、実装進捗更新）
