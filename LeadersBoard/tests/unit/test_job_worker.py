@@ -11,6 +11,7 @@ import pytest
 from src.ports.job_queue_port import JobQueuePort
 from src.ports.job_status_port import JobStatus, JobStatusPort
 from src.ports.storage_port import StoragePort
+from src.ports.tracking_port import TrackingPort
 from src.worker.job_worker import JobWorker
 
 
@@ -67,6 +68,29 @@ class DummyQueue(JobQueuePort):
         return None
 
 
+class DummyTracking(TrackingPort):
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, Any]] = []
+        self.run_id = "run-123"
+
+    def start_run(self, run_name: str) -> str:
+        self.calls.append(("start_run", run_name))
+        return self.run_id
+
+    def log_params(self, params: dict[str, Any]) -> None:
+        self.calls.append(("log_params", params))
+
+    def log_metrics(self, metrics: dict[str, float]) -> None:
+        self.calls.append(("log_metrics", metrics))
+
+    def log_artifact(self, local_path: str) -> None:
+        self.calls.append(("log_artifact", local_path))
+
+    def end_run(self) -> str:
+        self.calls.append(("end_run", None))
+        return self.run_id
+
+
 @pytest.fixture
 def storage(tmp_path: Path) -> DummyStorage:
     return DummyStorage(tmp_path)
@@ -83,29 +107,43 @@ def queue() -> DummyQueue:
 
 
 @pytest.fixture
-def worker(storage: DummyStorage, status: DummyStatus) -> JobWorker:
+def tracking() -> DummyTracking:
+    return DummyTracking()
+
+
+@pytest.fixture
+def worker(storage: DummyStorage, status: DummyStatus, tracking: DummyTracking) -> JobWorker:
     return JobWorker(
         queue=MagicMock(),
         status=status,
         storage=storage,
+        tracking=tracking,
         artifacts_root=storage.path / "artifacts",
         dequeue_timeout=0.1,
     )
 
 
-def test_execute_job_runs_command(monkeypatch: Any, worker: JobWorker, status: DummyStatus, storage: DummyStorage) -> None:
+def test_execute_job_runs_command(monkeypatch: Any, worker: JobWorker, status: DummyStatus, storage: DummyStorage, tracking: DummyTracking) -> None:
     job = {
         "job_id": "job-1",
         "submission_id": "sub-1",
         "entrypoint": "main.py",
         "config_file": "config.yaml",
     }
+
+    # Create metrics.json
+    output_dir = worker.artifacts_root / job["job_id"]
+    output_dir.mkdir(parents=True, exist_ok=True)
+    metrics_file = output_dir / "metrics.json"
+    metrics_file.write_text('{"params": {"method": "test"}, "metrics": {"auc": 0.9}}')
+
     result = MagicMock()
-    result.stdout = b"run-123\n"
+    result.stdout = b""
     monkeypatch.setattr("src.worker.job_worker.subprocess.run", MagicMock(return_value=result))
 
     worker.storage = storage
     worker.status = status
+    worker.tracking = tracking
     worker.queue = MagicMock()
     run_id = worker.execute_job(job)
 
@@ -131,7 +169,7 @@ def test_execute_job_invalid_path_updates_status(worker: JobWorker, status: Dumm
     assert status.calls[-1][1] == JobStatus.FAILED
 
 
-def test_run_processes_job(monkeypatch: Any, storage: DummyStorage, status: DummyStatus) -> None:
+def test_run_processes_job(monkeypatch: Any, storage: DummyStorage, status: DummyStatus, tracking: DummyTracking) -> None:
     queue = DummyQueue(
         [
             {
@@ -146,11 +184,19 @@ def test_run_processes_job(monkeypatch: Any, storage: DummyStorage, status: Dumm
         queue=queue,
         status=status,
         storage=storage,
+        tracking=tracking,
         artifacts_root=storage.path / "artifacts",
         dequeue_timeout=0.1,
     )
+
+    # Create metrics.json
+    output_dir = worker.artifacts_root / "job-3"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    metrics_file = output_dir / "metrics.json"
+    metrics_file.write_text('{"params": {"method": "test"}, "metrics": {"auc": 0.9}}')
+
     result = MagicMock()
-    result.stdout = b"run-456\n"
+    result.stdout = b""
     monkeypatch.setattr("src.worker.job_worker.subprocess.run", MagicMock(return_value=result))
 
     timer = threading.Timer(0.1, worker.stop)
@@ -205,3 +251,98 @@ def test_execute_job_oom_sets_error(monkeypatch: Any, worker: JobWorker, status:
 
     assert status.calls[-1][1] == JobStatus.FAILED
     assert status.calls[-1][2]["error"] == "out of memory"
+
+
+def test_execute_job_loads_metrics_and_logs_to_mlflow(
+    monkeypatch: Any, worker: JobWorker, status: DummyStatus, storage: DummyStorage, tracking: DummyTracking
+) -> None:
+    job = {
+        "job_id": "job-metrics",
+        "submission_id": "sub-1",
+        "entrypoint": "main.py",
+        "config_file": "config.yaml",
+    }
+
+    # Create metrics.json
+    output_dir = worker.artifacts_root / job["job_id"]
+    output_dir.mkdir(parents=True, exist_ok=True)
+    metrics_file = output_dir / "metrics.json"
+    metrics_file.write_text('{"params": {"method": "padim"}, "metrics": {"auc": 0.95}}')
+
+    result = MagicMock()
+    result.stdout = b""
+    monkeypatch.setattr("src.worker.job_worker.subprocess.run", MagicMock(return_value=result))
+
+    worker.storage = storage
+    worker.status = status
+    worker.tracking = tracking
+    worker.queue = MagicMock()
+
+    run_id = worker.execute_job(job)
+
+    assert run_id == "run-123"
+    assert status.calls[-1][1] == JobStatus.COMPLETED
+    assert status.calls[-1][2]["run_id"] == "run-123"
+
+    # Verify MLflow calls
+    assert ("start_run", job["job_id"]) in tracking.calls
+    assert ("log_params", {"method": "padim"}) in tracking.calls
+    assert ("log_metrics", {"auc": 0.95}) in tracking.calls
+    assert ("log_artifact", str(output_dir)) in tracking.calls
+    assert ("end_run", None) in tracking.calls
+
+
+def test_execute_job_fails_when_metrics_json_missing(
+    monkeypatch: Any, worker: JobWorker, status: DummyStatus, storage: DummyStorage
+) -> None:
+    job = {
+        "job_id": "job-no-metrics",
+        "submission_id": "sub-1",
+        "entrypoint": "main.py",
+        "config_file": "config.yaml",
+    }
+
+    result = MagicMock()
+    result.stdout = b""
+    monkeypatch.setattr("src.worker.job_worker.subprocess.run", MagicMock(return_value=result))
+
+    worker.storage = storage
+    worker.status = status
+    worker.queue = MagicMock()
+
+    with pytest.raises(ValueError, match="metrics.json not found"):
+        worker.execute_job(job)
+
+    assert status.calls[-1][1] == JobStatus.FAILED
+    assert "metrics.json not found" in status.calls[-1][2]["error"]
+
+
+def test_execute_job_fails_when_metrics_json_invalid(
+    monkeypatch: Any, worker: JobWorker, status: DummyStatus, storage: DummyStorage
+) -> None:
+    job = {
+        "job_id": "job-invalid-metrics",
+        "submission_id": "sub-1",
+        "entrypoint": "main.py",
+        "config_file": "config.yaml",
+    }
+
+    # Create invalid metrics.json (missing 'metrics' field)
+    output_dir = worker.artifacts_root / job["job_id"]
+    output_dir.mkdir(parents=True, exist_ok=True)
+    metrics_file = output_dir / "metrics.json"
+    metrics_file.write_text('{"params": {"method": "padim"}}')
+
+    result = MagicMock()
+    result.stdout = b""
+    monkeypatch.setattr("src.worker.job_worker.subprocess.run", MagicMock(return_value=result))
+
+    worker.storage = storage
+    worker.status = status
+    worker.queue = MagicMock()
+
+    with pytest.raises(ValueError, match="must contain 'params' and 'metrics'"):
+        worker.execute_job(job)
+
+    assert status.calls[-1][1] == JobStatus.FAILED
+    assert "must contain 'params' and 'metrics'" in status.calls[-1][2]["error"]

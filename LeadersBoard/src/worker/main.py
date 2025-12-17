@@ -9,6 +9,7 @@ from pathlib import Path
 from redis import Redis
 
 from src.adapters.filesystem_storage_adapter import FileSystemStorageAdapter
+from src.adapters.mlflow_tracking_adapter import MLflowTrackingAdapter
 from src.adapters.redis_job_queue_adapter import RedisJobQueueAdapter
 from src.adapters.redis_job_status_adapter import RedisJobStatusAdapter
 from src.worker.job_worker import JobWorker
@@ -29,7 +30,8 @@ def _create_worker() -> JobWorker:
     status = RedisJobStatusAdapter(redis_client)
     storage_root = Path(os.getenv("UPLOAD_ROOT", "/shared/submissions"))
     storage = FileSystemStorageAdapter(storage_root)
-    return JobWorker(queue=queue, status=status, storage=storage)
+    tracking = MLflowTrackingAdapter()
+    return JobWorker(queue=queue, status=status, storage=storage, tracking=tracking)
 
 
 def main() -> None:

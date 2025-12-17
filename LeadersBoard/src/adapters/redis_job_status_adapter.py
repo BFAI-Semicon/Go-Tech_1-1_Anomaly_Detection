@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import Any
 
 from redis import Redis
@@ -28,11 +29,13 @@ class RedisJobStatusAdapter(JobStatusPort):
 
     def create(self, job_id: str, submission_id: str, user_id: str) -> None:
         key = self.key_for(job_id)
+        created_at = datetime.now(UTC).isoformat()
         payload = {
             "job_id": job_id,
             "submission_id": submission_id,
             "user_id": user_id,
             "status": str(JobStatus.PENDING.value),
+            "created_at": created_at,
         }
         self.redis.hset(key, mapping={k: str(v) for k, v in payload.items()})
         self._ensure_ttl(key)

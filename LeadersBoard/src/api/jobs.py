@@ -97,7 +97,11 @@ async def create_job(
         job_id = enqueue_job.execute(request.submission_id, user_id, request.config)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return {"job_id": job_id}
+    return {
+        "job_id": job_id,
+        "submission_id": request.submission_id,
+        "status": "pending",
+    }
 
 
 @router.get("/jobs/{job_id}/status")

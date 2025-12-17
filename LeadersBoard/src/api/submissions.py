@@ -98,4 +98,4 @@ async def create_submission(
         for file in files:
             await file.close()
 
-    return {"submission_id": submission_id}
+    return {"submission_id": submission_id, "user_id": user_id}

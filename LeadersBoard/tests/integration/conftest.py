@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import fakeredis
 import pytest
@@ -16,7 +17,33 @@ from src.api import submissions as submissions_module
 from src.api.main import app
 from src.domain.create_submission import CreateSubmission
 from src.domain.enqueue_job import EnqueueJob
+from src.ports.tracking_port import TrackingPort
 from src.worker.job_worker import JobWorker
+
+
+class MockTrackingAdapter(TrackingPort):
+    """Mock TrackingPort for integration tests."""
+
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, Any]] = []
+        self.run_id = "mock-run-id"
+
+    def start_run(self, run_name: str) -> str:
+        self.calls.append(("start_run", run_name))
+        return self.run_id
+
+    def log_params(self, params: dict[str, Any]) -> None:
+        self.calls.append(("log_params", params))
+
+    def log_metrics(self, metrics: dict[str, float]) -> None:
+        self.calls.append(("log_metrics", metrics))
+
+    def log_artifact(self, local_path: str) -> None:
+        self.calls.append(("log_artifact", local_path))
+
+    def end_run(self) -> str:
+        self.calls.append(("end_run", None))
+        return self.run_id
 
 
 @dataclass
@@ -44,7 +71,8 @@ def integration_context(tmp_path: Path) -> IntegrationContext:
     queue_adapter = RedisJobQueueAdapter(fake_redis)
     status_adapter = RedisJobStatusAdapter(fake_redis)
     rate_limit_adapter = RedisRateLimitAdapter(fake_redis)
-    job_worker = JobWorker(queue_adapter, status_adapter, storage, artifacts_root=artifacts_root)
+    tracking_adapter = MockTrackingAdapter()
+    job_worker = JobWorker(queue_adapter, status_adapter, storage, tracking_adapter, artifacts_root=artifacts_root)
 
     overrides = {
         submissions_module.get_storage: lambda: storage,

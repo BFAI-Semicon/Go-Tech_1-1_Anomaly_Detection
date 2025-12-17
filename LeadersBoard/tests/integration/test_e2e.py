@@ -15,8 +15,9 @@ AUTH_HEADER = {"Authorization": "Bearer integration-token"}
 
 def _runner_script(run_id: str) -> str:
     return textwrap.dedent(
-        f"""\
+        """\
         import argparse
+        import json
         import os
 
         def main():
@@ -28,7 +29,9 @@ def _runner_script(run_id: str) -> str:
             result_path = os.path.join(args.output, "result.txt")
             with open(result_path, "w") as out_file:
                 out_file.write("completed")
-            print("{run_id}")
+            metrics_path = os.path.join(args.output, "metrics.json")
+            with open(metrics_path, "w") as metrics_file:
+                json.dump({"params": {"method": "test"}, "metrics": {"auc": 0.95}}, metrics_file)
 
         if __name__ == "__main__":
             main()
@@ -40,15 +43,20 @@ def _sleep_script() -> str:
     return textwrap.dedent(
         """\
         import argparse
+        import json
+        import os
         import time
 
         def main():
             parser = argparse.ArgumentParser()
             parser.add_argument("--config", required=True)
             parser.add_argument("--output", required=True)
-            parser.parse_args()
+            args = parser.parse_args()
+            os.makedirs(args.output, exist_ok=True)
             time.sleep(0.5)
-            print("sleep-finished")
+            metrics_path = os.path.join(args.output, "metrics.json")
+            with open(metrics_path, "w") as metrics_file:
+                json.dump({"params": {"method": "test"}, "metrics": {"auc": 0.9}}, metrics_file)
 
         if __name__ == "__main__":
             main()
@@ -127,11 +135,7 @@ def _post_submission(
             ),
         ),
     ]
-    payload = {
-        "metadata": json.dumps(
-            {"entrypoint": entrypoint, "config_file": config_file}
-        )
-    }
+    payload = {"metadata": json.dumps({"entrypoint": entrypoint, "config_file": config_file})}
     response = client.post(
         "/submissions",
         headers=AUTH_HEADER,
@@ -141,29 +145,17 @@ def _post_submission(
     return response.json().get("submission_id"), response.status_code
 
 
-def _create_submission_entry(
-    context,
-    script: str,
-    entrypoint: str = "main.py",
-    config_file: str = "config.yaml",
-) -> str:
+def _create_submission_entry(context, script: str, entrypoint: str = "main.py", config_file: str = "config.yaml") -> str:
     files = [
         _buffer_from_text(script, entrypoint),
         _buffer_from_text("batch_size: 1", config_file),
     ]
-    return context.create_submission.execute(
-        "integration-user",
-        files,
-        entrypoint=entrypoint,
-        config_file=config_file,
-    )
+    return context.create_submission.execute("integration-user", files, entrypoint=entrypoint, config_file=config_file)
 
 
 def test_end_to_end_flow(integration_context) -> None:
     client = integration_context.client
-    submission_id, status_code = _post_submission(
-        client, _runner_script("run-id-e2e")
-    )
+    submission_id, status_code = _post_submission(client, _runner_script("run-id-e2e"))
     assert status_code == 201
     assert submission_id
 
@@ -180,27 +172,23 @@ def test_end_to_end_flow(integration_context) -> None:
     assert job_payload["job_id"] == job_id
 
     run_id = integration_context.job_worker.execute_job(job_payload)
-    assert run_id == "run-id-e2e"
+    assert run_id == "mock-run-id"
 
     log_path = integration_context.logs_root / f"{job_id}.log"
     log_path.write_text("log output captured")
 
     status = integration_context.status_adapter.get_status(job_id)
     assert status["status"] == JobStatus.COMPLETED.value
-    assert status["run_id"] == "run-id-e2e"
+    assert status["run_id"] == "mock-run-id"
 
-    results_response = client.get(
-        f"/jobs/{job_id}/results", headers=AUTH_HEADER
-    )
+    results_response = client.get(f"/jobs/{job_id}/results", headers=AUTH_HEADER)
     assert results_response.status_code == 200
     results_payload = results_response.json()
-    assert results_payload["run_id"] == "run-id-e2e"
+    assert results_payload["run_id"] == "mock-run-id"
     assert results_payload["mlflow_ui_link"].startswith("http://mlflow:5010")
     assert results_payload["mlflow_rest_link"].startswith("http://mlflow:5010")
 
-    logs_response = client.get(
-        f"/jobs/{job_id}/logs", headers=AUTH_HEADER
-    )
+    logs_response = client.get(f"/jobs/{job_id}/logs", headers=AUTH_HEADER)
     assert logs_response.status_code == 200
     assert logs_response.json()["logs"] == "log output captured"
 
@@ -217,18 +205,12 @@ def test_submission_rejects_oversized_file(integration_context) -> None:
             ("files", ("main.py", big_file, "text/plain")),
             ("files", ("config.yaml", config_file, "text/yaml")),
         ],
-        data={
-            "metadata": json.dumps(
-                {"entrypoint": "main.py", "config_file": "config.yaml"}
-            )
-        },
+        data={"metadata": json.dumps({"entrypoint": "main.py", "config_file": "config.yaml"})},
     )
     assert response.status_code == 400
 
 
-def test_submission_rejects_path_traversal_entrypoint(
-    integration_context,
-) -> None:
+def test_submission_rejects_path_traversal_entrypoint(integration_context) -> None:
     client = integration_context.client
     response = client.post(
         "/submissions",
@@ -251,12 +233,7 @@ def test_submission_rejects_path_traversal_entrypoint(
                 ),
             ),
         ],
-        data={
-            "entrypoint": "../etc/passwd",
-            "metadata": json.dumps(
-                {"entrypoint": "../etc/passwd", "config_file": "config.yaml"}
-            ),
-        },
+        data={"entrypoint": "../etc/passwd", "metadata": json.dumps({"entrypoint": "../etc/passwd", "config_file": "config.yaml"})},
     )
     assert response.status_code == 400
 
@@ -284,25 +261,14 @@ def test_submission_rejects_non_py_entrypoint(integration_context) -> None:
                 ),
             ),
         ],
-        data={
-            "entrypoint": "main.txt",
-            "metadata": json.dumps(
-                {"entrypoint": "main.txt", "config_file": "config.yaml"}
-            ),
-        },
+        data={"entrypoint": "main.txt", "metadata": json.dumps({"entrypoint": "main.txt", "config_file": "config.yaml"})},
     )
     assert response.status_code == 400
 
 
 def test_worker_records_timeout(integration_context) -> None:
-    submission_id = _create_submission_entry(
-        integration_context, _sleep_script()
-    )
-    job_id = integration_context.enqueue_job.execute(
-        submission_id,
-        "integration-user",
-        {"mode": "timeout"},
-    )
+    submission_id = _create_submission_entry(integration_context, _sleep_script())
+    job_id = integration_context.enqueue_job.execute(submission_id, "integration-user", {"mode": "timeout"})
     job_payload = integration_context.queue_adapter.dequeue(timeout=1)
     assert job_payload
     job_payload["resource_class"] = "tiny"
@@ -317,14 +283,8 @@ def test_worker_records_timeout(integration_context) -> None:
 
 
 def test_worker_reports_oom_failure(integration_context) -> None:
-    submission_id = _create_submission_entry(
-        integration_context, _oom_script()
-    )
-    job_id = integration_context.enqueue_job.execute(
-        submission_id,
-        "integration-user",
-        {"mode": "oom"},
-    )
+    submission_id = _create_submission_entry(integration_context, _oom_script())
+    job_id = integration_context.enqueue_job.execute(submission_id, "integration-user", {"mode": "oom"})
     job_payload = integration_context.queue_adapter.dequeue(timeout=1)
     assert job_payload
 
@@ -336,17 +296,9 @@ def test_worker_reports_oom_failure(integration_context) -> None:
     assert status["error"] == "out of memory"
 
 
-def test_worker_reports_mlflow_connection_failure(
-    integration_context,
-) -> None:
-    submission_id = _create_submission_entry(
-        integration_context, _mlflow_error_script()
-    )
-    job_id = integration_context.enqueue_job.execute(
-        submission_id,
-        "integration-user",
-        {"mode": "mlflow"},
-    )
+def test_worker_reports_mlflow_connection_failure(integration_context) -> None:
+    submission_id = _create_submission_entry(integration_context, _mlflow_error_script())
+    job_id = integration_context.enqueue_job.execute(submission_id, "integration-user", {"mode": "mlflow"})
     job_payload = integration_context.queue_adapter.dequeue(timeout=1)
     assert job_payload
 

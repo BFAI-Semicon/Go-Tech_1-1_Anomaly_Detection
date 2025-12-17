@@ -704,15 +704,15 @@ async def get_job_results(job_id: str, user_id: str = Depends(get_current_user))
 
 ##### 1. `src/worker/job_worker.py`
 
-- [ ] JobWorkerクラス実装（TrackingPort追加）
-- [ ] run()メソッド実装（無限ループ、キュー待機）
-- [ ] execute_job()メソッド実装
-- [ ] パス検証実装
-- [ ] subprocess.run実装
-- [ ] metrics.json読み込み実装
-- [ ] TrackingPort経由でMLflow記録実装
-- [ ] run_id取得実装
-- [ ] 状態更新実装
+- [x] JobWorkerクラス実装（TrackingPort追加）
+- [x] run()メソッド実装（無限ループ、キュー待機）
+- [x] execute_job()メソッド実装
+- [x] パス検証実装
+- [x] subprocess.run実装
+- [x] metrics.json読み込み実装
+- [x] TrackingPort経由でMLflow記録実装
+- [x] run_id取得実装
+- [x] 状態更新実装
 
 ```python
 class JobWorker:
@@ -765,9 +765,9 @@ class JobWorker:
 
 ##### 2. metrics.json読み込み処理
 
-- [ ] `_load_metrics()` メソッド実装: `{output_dir}/metrics.json` を読み込み
-- [ ] JSONパースエラーハンドリング実装
-- [ ] 必須フィールド検証実装（params, metrics）
+- [x] `_load_metrics()` メソッド実装: `{output_dir}/metrics.json` を読み込み
+- [x] JSONパースエラーハンドリング実装
+- [x] 必須フィールド検証実装（params, metrics）
 
 ```python
 def _load_metrics(self, output_dir: Path) -> dict[str, Any]:
@@ -794,29 +794,29 @@ def _load_metrics(self, output_dir: Path) -> dict[str, Any]:
 
 ##### 3. MLflow記録処理
 
-- [ ] TrackingPort.start_run()呼び出し実装
-- [ ] TrackingPort.log_params()呼び出し実装
-- [ ] TrackingPort.log_metrics()呼び出し実装
-- [ ] TrackingPort.log_artifacts()呼び出し実装（output_dir全体）
-- [ ] TrackingPort.end_run()呼び出しとrun_id取得実装
+- [x] TrackingPort.start_run()呼び出し実装
+- [x] TrackingPort.log_params()呼び出し実装
+- [x] TrackingPort.log_metrics()呼び出し実装
+- [x] TrackingPort.log_artifacts()呼び出し実装（output_dir全体）
+- [x] TrackingPort.end_run()呼び出しとrun_id取得実装
 
 ##### 4. タイムアウト設定
 
-- [ ] `small`クラス: 30分タイムアウト実装
-- [ ] `medium`クラス: 60分タイムアウト実装
+- [x] `small`クラス: 30分タイムアウト実装
+- [x] `medium`クラス: 60分タイムアウト実装
 
 ##### 5. エラーハンドリング
 
-- [ ] OOM検知・エラー処理実装
-- [ ] タイムアウト検知・エラー処理実装
-- [ ] metrics.json読み込みエラー処理実装
-- [ ] MLflow記録エラー処理実装
-- [ ] status.update(job_id, status=failed, error_message=...) 実装
+- [x] OOM検知・エラー処理実装
+- [x] タイムアウト検知・エラー処理実装
+- [x] metrics.json読み込みエラー処理実装
+- [x] MLflow記録エラー処理実装
+- [x] status.update(job_id, status=failed, error_message=...) 実装
 
 ##### 6. worker/main.py更新
 
-- [ ] MLflowTrackingAdapterインスタンス化実装
-- [ ] JobWorkerへのtracking注入実装
+- [x] MLflowTrackingAdapterインスタンス化実装
+- [x] JobWorkerへのtracking注入実装
 
 ```python
 def _create_worker() -> JobWorker:
@@ -837,7 +837,7 @@ def _create_worker() -> JobWorker:
 
 ##### 7. ユニットテスト更新
 
-- [ ] `tests/unit/test_job_worker.py` 更新
+- [x] `tests/unit/test_job_worker.py` 更新
   - モックTrackingPortを追加
   - metrics.json読み込みテスト追加
   - TrackingPort呼び出し検証テスト追加
@@ -1039,12 +1039,177 @@ streamlit:
 
 ---
 
-### T17: 性能テスト実装
+### T17: ユーザー認証機能実装
 
 **優先度**: P2  
-**依存**: T15
+**依存**: T16
 
 #### T17: 実装内容
+
+##### 1. APIサーバー側: 認証エンドポイント実装
+
+- [ ] `src/api/auth.py` 作成
+- [ ] `POST /auth/login` エンドポイント実装
+- [ ] LoginRequest/LoginResponseモデル定義
+- [ ] ユーザー名・パスワード検証実装
+- [ ] トークン発行実装
+
+```python
+# src/api/auth.py
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
+
+router = APIRouter()
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+class LoginResponse(BaseModel):
+    token: str
+    user_id: str
+
+# ユーザー管理（初期実装: 環境変数またはハードコード）
+# 本番環境ではデータベースやRedisに移行
+USERS = {
+    "alice": {"password": "hashed_password_alice", "token": "token-alice"},
+    "bob": {"password": "hashed_password_bob", "token": "token-bob"},
+}
+
+@router.post("/auth/login", response_model=LoginResponse)
+async def login(request: LoginRequest):
+    user = USERS.get(request.username)
+    if not user or not verify_password(request.password, user["password"]):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    return LoginResponse(token=user["token"], user_id=request.username)
+```
+
+- [ ] パスワードハッシュ化実装（`passlib`または`bcrypt`使用）
+- [ ] `src/api/main.py`にauthルーター追加
+
+##### 2. トークン・ユーザーIDマッピング改善
+
+- [ ] `src/api/submissions.py`の`get_current_user()`を更新
+- [ ] トークンとユーザーIDのマッピング実装
+
+```python
+# 現在: トークン自体がuser_id
+def get_current_user(authorization: str) -> str:
+    token = extract_token(authorization)
+    if token in valid_tokens:
+        return token  # "devtoken"
+
+# 改善後: トークンからユーザーIDを取得
+TOKEN_USER_MAP = {
+    "token-alice": "alice",
+    "token-bob": "bob",
+    "devtoken": "dev-user",  # 下位互換性
+}
+
+def get_current_user(authorization: str) -> str:
+    token = extract_token(authorization)
+    if token not in TOKEN_USER_MAP:
+        raise HTTPException(401, "invalid token")
+    return TOKEN_USER_MAP[token]
+```
+
+##### 3. Streamlit側: ログイン画面実装
+
+- [ ] `src/streamlit/auth.py` 作成（ログイン処理）
+- [ ] `src/streamlit/app.py` 更新
+- [ ] ログイン画面実装
+- [ ] セッション管理実装（`st.session_state`）
+- [ ] ログアウト機能実装
+
+```python
+# src/streamlit/app.py
+import streamlit as st
+import requests
+
+API_URL = os.getenv("API_URL", "http://api:8010")
+
+def login(username: str, password: str) -> dict:
+    response = requests.post(
+        f"{API_URL}/auth/login",
+        json={"username": username, "password": password}
+    )
+    if response.status_code == 200:
+        return response.json()
+    raise Exception("Login failed")
+
+st.title("LeadersBoard")
+
+if "token" not in st.session_state:
+    # ログイン画面
+    st.subheader("Login")
+    username = st.text_input("Username")
+    password = st.text_input("Password", type="password")
+    
+    if st.button("Login"):
+        try:
+            result = login(username, password)
+            st.session_state.token = result["token"]
+            st.session_state.user_id = result["user_id"]
+            st.success(f"Logged in as {result['user_id']}")
+            st.rerun()
+        except Exception as e:
+            st.error(str(e))
+else:
+    # メイン画面（投稿フォームなど）
+    st.write(f"Welcome, {st.session_state.user_id}!")
+    
+    # 投稿フォーム
+    files = st.file_uploader("Upload files", accept_multiple_files=True)
+    if st.button("Submit"):
+        response = requests.post(
+            f"{API_URL}/submissions",
+            headers={"Authorization": f"Bearer {st.session_state.token}"},
+            files=[("files", f) for f in files]
+        )
+        st.json(response.json())
+    
+    if st.button("Logout"):
+        del st.session_state.token
+        del st.session_state.user_id
+        st.rerun()
+```
+
+##### 4. 環境変数・設定ファイル更新
+
+- [ ] `.env.example` にユーザー管理設定を追加
+
+```bash
+# User Authentication (optional, for development)
+USERS_JSON='{"alice":{"password":"hashed_pw","token":"token-alice"}}'
+```
+
+##### 5. ユニットテスト実装
+
+- [ ] `tests/unit/test_api_auth.py` 作成
+  - ログイン成功テスト
+  - ログイン失敗テスト（不正なパスワード）
+  - ログイン失敗テスト（存在しないユーザー）
+- [ ] `tests/unit/test_api_submissions.py` 更新
+  - トークン・ユーザーIDマッピングのテスト
+
+#### T17: 受け入れ基準
+
+- `POST /auth/login` エンドポイントが動作する
+- 正しい認証情報でトークンが発行される
+- 不正な認証情報で401エラーが返る
+- Streamlitでログイン・ログアウトが動作する
+- トークンを使って各ユーザーが独立して投稿できる
+- `user_id`がトークンではなく実際のユーザー名になる
+- ユニットテストが通過する
+
+---
+
+### T18: 性能テスト実装
+
+**優先度**: P2  
+**依存**: T15, T17
+
+#### T18: 実装内容
 
 ##### 1. `tests/performance/locustfile.py`
 
@@ -1066,7 +1231,7 @@ class LeaderboardUser(HttpUser):
 - [ ] Locustシナリオ実装: 100ユーザー、10提出/時間
 - [ ] P95レイテンシ測定実装
 
-#### T17: 受け入れ基準
+#### T18: 受け入れ基準
 
 - 提出受付: P95 500ms以内
 - ジョブ投入: P95 100ms以内
@@ -1074,12 +1239,12 @@ class LeaderboardUser(HttpUser):
 
 ---
 
-### T18: ドキュメント作成
+### T19: ドキュメント作成
 
 **優先度**: P2  
 **依存**: T14
 
-#### T18: 実装内容
+#### T19: 実装内容
 
 ##### 1. `README.md`
 
@@ -1096,7 +1261,7 @@ class LeaderboardUser(HttpUser):
 
 - [ ] デプロイ手順文書作成
 
-#### T18: 受け入れ基準
+#### T19: 受け入れ基準
 
 - README.mdが完成している
 - セットアップ手順が明確
@@ -1122,9 +1287,11 @@ T1 (初期化)
  │       └─ T13 (Worker)
  └─ T14 (docker-compose)
      ├─ T15 (統合テスト)
-     │   └─ T17 (性能テスト)
+     │   └─ T18 (性能テスト)
      ├─ T16 (Streamlit UI)
-     └─ T18 (ドキュメント)
+     │   └─ T17 (ユーザー認証機能)
+     │       └─ T18 (性能テスト)
+     └─ T19 (ドキュメント)
 ```
 
 ## リスクと軽減策

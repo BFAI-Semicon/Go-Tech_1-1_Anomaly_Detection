@@ -96,7 +96,9 @@ nvcr
 Omniboard
 ONNX
 opencv
+outofmemory
 PaDiM
+passlib
 passwordless
 PatchCore
 pathlib
