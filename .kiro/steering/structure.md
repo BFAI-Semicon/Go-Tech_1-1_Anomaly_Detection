@@ -184,10 +184,17 @@ from src.adapters.filesystem_storage_adapter import FileSystemStorageAdapter
 ### テスト戦略
 
 - **ユニットテスト**: ドメイン・ポート実装（モックアダプタ使用）
+  - **Location**: `/tests/unit/`
+  - **Count**: 52件
+  - **Focus**: ドメインロジック100%カバレッジ達成
 - **統合テスト**: docker-compose環境でエンドツーエンド（実Redis・MLflow使用）
+  - **Location**: `/tests/integration/`
+  - **Count**: 7件
+  - **Coverage**: エンドツーエンドフロー、セキュリティ（パストラバーサル）、エラーハンドリング（OOM、タイムアウト）
 - **境界テスト**: ファイルサイズ上限、タイムアウト、重複投入、OOM等
+- **Overall Coverage**: 90%（目標80%を超過達成）
 
 ## Maintenance
 
 - updated_at: 2025-12-17
-- reason: API 認証・提出メタデータ・ワーカー実行のパターンをコード構成に即して記録
+- reason: テストカバレッジ90%達成を反映、テスト戦略の詳細を追加

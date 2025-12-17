@@ -78,7 +78,12 @@
 
 - **Framework**: `pytest`
 - **Coverage**: 80%以上推奨（ドメインロジック・ポート実装は必須）
+  - **現在の達成状況**: 90%（T15統合テスト完了時点）
+  - **テスト数**: 59件（ユニット52件、統合7件）
 - **Integration Test**: docker-compose環境でエンドツーエンドテスト
+- **Test Organization**:
+  - `/tests/unit/` - モックアダプタを使用した高速テスト
+  - `/tests/integration/` - 実Redis・MLflowを使用したE2Eテスト
 
 ## Development Environment
 
@@ -189,4 +194,4 @@ docker-compose -f docker-compose.yml up --build
 ## Maintenance
 
 - updated_at: 2025-12-17
-- reason: API 認証、提出バリデーション、ジョブ実行のパターンを現在のコード構成へ反映する
+- reason: テストカバレッジ90%達成（T15完了）を反映、テスト構成の詳細を追加
