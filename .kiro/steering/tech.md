@@ -188,10 +188,12 @@ docker-compose -f docker-compose.yml up --build
 - `JobWorker` は entrypoint と設定ファイルを `python` に渡し、artifact ルートへ成果物を出力する。
 - 実行は `subprocess.run(..., timeout=...)` で行う。
 - `resource_class`（small/medium）が指定されていれば `RESOURCE_TIMEOUTS` からタイムアウトを選ぶ。
-- stdout から `run_id` を抜き出して `JobStatus.COMPLETED` を更新する。
-- 例外・タイムアウト・OOM 検出時には `FAILED` として `artifact/log` ルートを `ARTIFACT_ROOT`/`LOG_ROOT` で切り替える。
+- **投稿者のコードは `metrics.json` を出力し、MLflowに依存しない**。
+- Worker が `metrics.json` を読み取り、`TrackingPort` 経由で MLflow に記録する。
+- `TrackingPort.end_run()` から `run_id` を取得して `JobStatus.COMPLETED` を更新する。
+- 例外・タイムアウト・OOM・metrics.json 不在/不正時には `FAILED` として `error` メッセージを保存する。
 
 ## Maintenance
 
 - updated_at: 2025-12-17
-- reason: テストカバレッジ90%達成（T15完了）を反映、テスト構成の詳細を追加
+- reason: Worker実装パターンを更新（投稿者のコードはMLflow非依存、Workerがmetrics.jsonを読み取ってTrackingPort経由でMLflowに記録）

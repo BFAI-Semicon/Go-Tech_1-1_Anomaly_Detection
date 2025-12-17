@@ -75,14 +75,16 @@ API 側で Redis カウンター（`leaderboard:rate:{user_id}`）を参照し�
 
 #### ワーカーの実行パターン
 
-- `JobWorker` は `ARTIFACT_ROOT`（デフォルト `/shared/artifacts`）を起動時に作成する。
+- `JobWorker` は `ARTIFACT_ROOT`（デフォルト `/shared/artifacts`）と `TrackingPort` を受け取る。
 - ジョブごとに `<artifact_root>/<job_id>` へ成果物を出力する。
--- `_build_command` は entrypoint と設定ファイルを `python` に渡し、`--output` で artifact_path を指定する。
-- これにより、submission ごとのディレクトリからエントリポイント/設定ファイルを参照する形式を標準化できる。
+- `_build_command` は entrypoint と設定ファイルを `python` に渡し、`--output` で artifact_path を指定する。
+- **投稿者のコードは `{output}/metrics.json` に結果を出力し、MLflowに依存しない**。
 - `resource_class`（small=30分、medium=60分）に応じて `RESOURCE_TIMEOUTS` からタイムアウトを選ぶ。
-- 実行は `subprocess.run(..., timeout=...)` で stdout を取得する。
-- `_extract_run_id` で stdout を文字列化して `JobStatus.COMPLETED` を更新する。
-- 例外・タイムアウト・OOM 検出時は `FAILED` にしつつ `error` メッセージを Redis ハッシュへ書き込む。
+- 実行は `subprocess.run(..., timeout=...)` で投稿者のコードを実行。
+- `_load_metrics()` で `metrics.json` を読み取り、パラメータとメトリクスを取得。
+- `TrackingPort.start_run()` → `log_params()` → `log_metrics()` → `end_run()` で MLflow に記録。
+- `run_id` を取得して `JobStatus.COMPLETED` を更新する。
+- 例外・タイムアウト・OOM・metrics.json 不在/不正時は `FAILED` にしつつ `error` メッセージを Redis ハッシュへ書き込む。
 
 ### 共有ボリューム
 
@@ -197,4 +199,4 @@ from src.adapters.filesystem_storage_adapter import FileSystemStorageAdapter
 ## Maintenance
 
 - updated_at: 2025-12-17
-- reason: テストカバレッジ90%達成を反映、テスト戦略の詳細を追加
+- reason: Worker実装パターンを更新（投稿者のコードはMLflow非依存、Workerがmetrics.jsonを読み取ってTrackingPort経由でMLflowに記録）
