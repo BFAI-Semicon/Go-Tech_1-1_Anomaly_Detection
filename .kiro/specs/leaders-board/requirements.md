@@ -56,9 +56,13 @@
 - 冪等化: `job_id` による重複投入の無害化
 - ワーカー: Redisキューをブロッキング取得（`BRPOP` または `XREADGROUP BLOCK`）し、GPUコンテナで学習・評価を実行
 - 実行方式: `python {entrypoint} --config {config_file} --output {output_dir}` 形式で起動
-- MLflow記録: `MLFLOW_TRACKING_URI` 環境変数経由でパラメータ・メトリクス・アーティファクトを記録
+- MLflow記録: Workerが投稿者のコードの出力（`{output_dir}/metrics.json`）を読み取り、TrackingPort経由でMLflowに記録
 - リソース制御: タイムアウト、CPU/GPU/メモリ上限（small/mediumクラス）
-- エントリポイント規約: 投稿者は `--config` と `--output` 引数を受け取る `main.py` を提供
+- エントリポイント規約:
+  - 投稿者は `--config` と `--output` 引数を受け取る `main.py` を提供
+  - 画像データを学習用と予測用に分割し、学習と予測を実行
+  - 性能指標（パラメータ、メトリクス）を `{output_dir}/metrics.json` に出力
+  - 投稿者のコードはMLflowに依存しない
 
 ### 結果取得
 
@@ -113,7 +117,33 @@
 
 ## データ要件
 
+### 投稿者の出力形式
+
+投稿者は `{output_dir}/metrics.json` に以下の形式で結果を出力：
+
+```json
+{
+  "params": {
+    "method": "padim",
+    "dataset": "mvtec_ad",
+    "epochs": 10,
+    "batch_size": 32
+  },
+  "metrics": {
+    "image_auc": 0.985,
+    "image_f1": 0.92,
+    "pixel_auc": 0.95,
+    "pixel_f1": 0.88,
+    "pixel_pro": 0.92,
+    "inference_time_ms": 150.5,
+    "vram_mb": 2048
+  }
+}
+```
+
 ### MLflowログ指針
+
+Workerが `metrics.json` を読み取り、以下をMLflowに記録：
 
 - params: `method`, `dataset`, `epochs`, `batch_size` など主要ハイパーパラメータ
 - metrics:

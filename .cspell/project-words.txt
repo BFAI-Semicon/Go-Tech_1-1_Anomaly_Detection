@@ -98,6 +98,7 @@ opencv
 PaDiM
 passwordless
 PatchCore
+pathlib
 Pezze
 plotly
 PRO

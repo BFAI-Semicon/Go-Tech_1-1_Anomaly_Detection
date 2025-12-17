@@ -167,7 +167,8 @@ Worker → JobQueuePort.dequeue() → Redis BRPOP (ブロッキング待機)
 ```python
 # main.py (投稿者が提供)
 import argparse
-import mlflow
+import json
+from pathlib import Path
 
 def main():
     parser = argparse.ArgumentParser()
@@ -175,12 +176,28 @@ def main():
     parser.add_argument("--output", required=True)
     args = parser.parse_args()
     
-    # MLflow記録は環境変数 MLFLOW_TRACKING_URI から自動取得
-    with mlflow.start_run():
-        # 学習・評価処理
-        mlflow.log_params({"method": "padim", "dataset": "mvtec_ad"})
-        mlflow.log_metrics({"image_auc": 0.985, "pixel_pro": 0.92})
-        mlflow.log_artifact(f"{args.output}/curves.png")
+    # 1. 画像データを学習用と予測用に分割
+    # 2. 学習実行
+    # 3. 予測実行
+    # 4. 性能指標計測
+    
+    # 結果をJSONファイルに出力（MLflowに依存しない）
+    results = {
+        "params": {
+            "method": "padim",
+            "dataset": "mvtec_ad",
+            "epochs": 10
+        },
+        "metrics": {
+            "image_auc": 0.985,
+            "pixel_pro": 0.92
+        }
+    }
+    
+    output_path = Path(args.output)
+    output_path.mkdir(parents=True, exist_ok=True)
+    with open(output_path / "metrics.json", "w") as f:
+        json.dump(results, f, indent=2)
 
 if __name__ == "__main__":
     main()
@@ -244,6 +261,7 @@ Client → GET /leaderboard (任意)
 
 #### ExecuteJob (Worker)
 
+<!-- markdownlint-disable MD013 -->
 - **入力**: job_id, submission_id, entrypoint, config_file, resource_class
 - **処理**:
   1. JobStatusPort.update(job_id, status=running)
@@ -251,11 +269,16 @@ Client → GET /leaderboard (任意)
   3. パス検証 (entrypoint, config_file にパストラバーサルがないか確認)
   4. 実行: `subprocess.run(["python", f"{submission_dir}/{entrypoint}", "--config", f"{submission_dir}/{config_file}", "--output", f"/shared/artifacts/{job_id}"])`
   5. タイムアウト・リソース制限適用
-  6. 投稿者のコードが `MLFLOW_TRACKING_URI` 経由で MLflow に記録
-  7. run_id を標準出力またはMLflow APIから取得
-  8. JobStatusPort.update(job_id, status=completed, run_id=run_id)
+  6. `{output_dir}/metrics.json` を読み込み
+  7. TrackingPort.start_run() でMLflow runを開始
+  8. TrackingPort.log_params() でパラメータを記録
+  9. TrackingPort.log_metrics() でメトリクスを記録
+  10. TrackingPort.log_artifacts() でアーティファクトを記録（任意）
+  11. run_id = TrackingPort.end_run() で run_id を取得
+  12. JobStatusPort.update(job_id, status=completed, run_id=run_id)
 - **出力**: run_id
-- **注**: TrackingPortは投稿者のコード内で使用されるため、Workerは直接呼び出さない
+- **注**: 投稿者のコードはMLflowに依存せず、結果をJSONファイルに出力する
+<!-- markdownlint-enable MD013 -->
 
 #### GetJobStatus
 
@@ -319,7 +342,14 @@ from typing import Optional, Dict, Any
 
 class JobQueuePort(ABC):
     @abstractmethod
-    def enqueue(self, job_id: str, submission_id: str, entrypoint: str, config_file: str, config: Dict[str, Any]) -> None:
+    def enqueue(
+        self,
+        job_id: str,
+        submission_id: str,
+        entrypoint: str,
+        config_file: str,
+        config: Dict[str, Any]
+    ) -> None:
         """ジョブをキューに投入 (entrypoint, config_file含む)"""
         pass
 
