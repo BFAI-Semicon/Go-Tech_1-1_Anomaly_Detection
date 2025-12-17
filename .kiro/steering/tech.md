@@ -7,6 +7,11 @@
 - **非同期ジョブ実行**: Redisキュー（ブロッキング取得: `BRPOP` または `XREADGROUP BLOCK`）+ GPUワーカー
 - **コンテナベース**: docker-compose単機構成（FastAPI、Redis、MLflow、Worker、任意でStreamlit）
 
+## API Authentication
+
+- API は `Authorization: Bearer <token>` を必須とし、`get_current_user` によって `API_TOKENS` 環境変数のカンマ区切りリストへ照合。リストが空でもヘッダー自体は必須なので、トークンベースの保護を環境変数で集中管理できる設計。
+- この認証依存性は FastAPI の依存性注入で `jobs` / `submissions` ルーター間で再利用され、コード上の各エンドポイントが同じトークンロジックを参照。
+
 ## Core Technologies
 
 - **Language**: Python 3.13
@@ -29,6 +34,16 @@
 - **Redis**: キュー・状態管理（`redis-py`）
 - **FastAPI**: REST API（認証、バリデーション、レート制限）
 - **Pydantic**: 入力正規化・バリデーション
+
+## Submission Handling
+
+- `CreateSubmission` は `MAX_FILE_SIZE = 100MB` を超えないファイルのみ受け入れる。
+- 拡張子は `.py`, `.yaml`, `.zip`, `.tar.gz` のホワイトリストに限定している。
+- エントリポイント・設定ファイル名にはパストラバーサルを防ぐ検証を行っている。
+- 提出時に受け取った `metadata` フィールドは JSON オブジェクトとしてパースされる。
+- `user_id`, `entrypoint`, `config_file` を含むメタ情報とマージして `metadata.json` に書き込む。
+- `FileSystemStorageAdapter` は `UPLOAD_ROOT`/`LOG_ROOT` を自動作成し、ファイル一覧（`files`）とメタデータをまとめて保持する。
+- 同アダプタは `load_logs(job_id)` で `<LOG_ROOT>/<job_id>.log` を返却し、API の `/jobs/{job_id}/logs` エンドポイントからワーカー出力を提供できるようインタフェースを揃えている。
 
 ## Rate Limiting
 
@@ -160,3 +175,18 @@ docker-compose -f docker-compose.yml up --build
 
 - 初期: ローカル共有ボリューム（`/shared/submissions`, `/shared/artifacts`）
 - 将来: S3互換ストレージ、Kubernetes PVC
+
+### ジョブ状態トラッキングと実行
+
+- `RedisJobStatusAdapter` は `leaderboard:job:<job_id>` ハッシュを使ってステータスとメタ情報を保持し、TTL を 90 日間維持する。
+- `count_running` は `SCAN` で running 状態を持つエントリを集計し、`EnqueueJob` の同時実行制限へ渡す。
+- `JobWorker` は entrypoint と設定ファイルを `python` に渡し、artifact ルートへ成果物を出力する。
+- 実行は `subprocess.run(..., timeout=...)` で行う。
+- `resource_class`（small/medium）が指定されていれば `RESOURCE_TIMEOUTS` からタイムアウトを選ぶ。
+- stdout から `run_id` を抜き出して `JobStatus.COMPLETED` を更新する。
+- 例外・タイムアウト・OOM 検出時には `FAILED` として `artifact/log` ルートを `ARTIFACT_ROOT`/`LOG_ROOT` で切り替える。
+
+## Maintenance
+
+- updated_at: 2025-12-17
+- reason: API 認証、提出バリデーション、ジョブ実行のパターンを現在のコード構成へ反映する

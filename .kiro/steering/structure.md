@@ -55,6 +55,11 @@ API 側で Redis カウンター（`leaderboard:rate:{user_id}`）を参照し�
 - `POST /submissions`: 提出受付
 - `POST /jobs`: ジョブ投入
 - `GET /jobs/{id}/status|logs|results`: 状態・ログ・結果取得
+- `Authorization: Bearer <token>` ヘッダーを必須とし、`API_TOKENS` 環境変数のカンマ区切りリストと照合してトークンを検証。
+- リストが空でもヘッダー自体は required なので、環境変数を変えるだけで公開/非公開を切り替えられる。
+- `/submissions` は `metadata` フィールドを JSON としてパースし、`entrypoint`/`config_file` などを含んだ辞書とマージして保存。
+- アップロードされたファイルは `NamedBinaryIO` でラップし、ファイル名を保持しつつ `StoragePort` を介して保存される。
+- `GET /jobs/{job_id}/logs` は `StoragePort.load_logs(job_id)` を呼び出し、ワーカーが `<LOG_ROOT>/<job_id>.log` として書き出したログを返すことでデバッグ可能にしている。
 
 ### Worker層
 
@@ -68,6 +73,17 @@ API 側で Redis カウンター（`leaderboard:rate:{user_id}`）を参照し�
 - `SIGTERM` / `SIGINT` を捕捉して安全に停止（グレースフルシャットダウン）
 - 暫定実装では軽量な待機ループでプロセスを維持し、将来的に `JobWorker.run()`（ブロッキング待機 + 実行）へ置換
 
+#### ワーカーの実行パターン
+
+- `JobWorker` は `ARTIFACT_ROOT`（デフォルト `/shared/artifacts`）を起動時に作成する。
+- ジョブごとに `<artifact_root>/<job_id>` へ成果物を出力する。
+-- `_build_command` は entrypoint と設定ファイルを `python` に渡し、`--output` で artifact_path を指定する。
+- これにより、submission ごとのディレクトリからエントリポイント/設定ファイルを参照する形式を標準化できる。
+- `resource_class`（small=30分、medium=60分）に応じて `RESOURCE_TIMEOUTS` からタイムアウトを選ぶ。
+- 実行は `subprocess.run(..., timeout=...)` で stdout を取得する。
+- `_extract_run_id` で stdout を文字列化して `JobStatus.COMPLETED` を更新する。
+- 例外・タイムアウト・OOM 検出時は `FAILED` にしつつ `error` メッセージを Redis ハッシュへ書き込む。
+
 ### 共有ボリューム
 
 **Location**: `/shared/`  
@@ -79,6 +95,14 @@ API 側で Redis カウンター（`leaderboard:rate:{user_id}`）を参照し�
 - `/shared/logs`: 学習・評価ログ（任意）
 - `/shared/jobs`: ジョブメタJSON（任意）
 - `/shared/mlflow.db`: SQLiteバックエンドストア
+
+### Storage Metadata & Logs
+
+- `FileSystemStorageAdapter` は `UPLOAD_ROOT/<submission_id>` に `metadata.json` を書き込む。
+- そのファイルは `files` リストと `user_id`/`entrypoint`/`config_file` などのメタ情報を保持する。
+- `UPLOAD_ROOT`/`LOG_ROOT` は起動時に自動作成される。
+- `validate_entrypoint` は `/` や `..` を含むパスを拒否し、`.py` で終わるファイルだけを許可してパスの安全性を確保する。
+- `load_logs(job_id)` は `<LOG_ROOT>/<job_id>.log` を返し、API エンドポイントや CI からジョブログを取り出せるよう整備する。
 
 ### Docker構成
 
@@ -162,3 +186,8 @@ from src.adapters.filesystem_storage_adapter import FileSystemStorageAdapter
 - **ユニットテスト**: ドメイン・ポート実装（モックアダプタ使用）
 - **統合テスト**: docker-compose環境でエンドツーエンド（実Redis・MLflow使用）
 - **境界テスト**: ファイルサイズ上限、タイムアウト、重複投入、OOM等
+
+## Maintenance
+
+- updated_at: 2025-12-17
+- reason: API 認証・提出メタデータ・ワーカー実行のパターンをコード構成に即して記録
