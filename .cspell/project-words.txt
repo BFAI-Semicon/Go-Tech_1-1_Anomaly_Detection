@@ -47,6 +47,7 @@ fastapi
 FastFlow
 Francesco
 GANomaly
+getenv
 gfortran
 Gian
 GLASS

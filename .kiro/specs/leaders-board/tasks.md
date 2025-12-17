@@ -704,20 +704,30 @@ async def get_job_results(job_id: str, user_id: str = Depends(get_current_user))
 
 ##### 1. `src/worker/job_worker.py`
 
-- [x] JobWorkerクラス実装
-- [x] run()メソッド実装（無限ループ、キュー待機）
-- [x] execute_job()メソッド実装
-- [x] パス検証実装
-- [x] subprocess.run実装
-- [x] run_id取得実装
-- [x] 状態更新実装
+- [ ] JobWorkerクラス実装（TrackingPort追加）
+- [ ] run()メソッド実装（無限ループ、キュー待機）
+- [ ] execute_job()メソッド実装
+- [ ] パス検証実装
+- [ ] subprocess.run実装
+- [ ] metrics.json読み込み実装
+- [ ] TrackingPort経由でMLflow記録実装
+- [ ] run_id取得実装
+- [ ] 状態更新実装
 
 ```python
 class JobWorker:
-    def __init__(self, queue: JobQueuePort, status: JobStatusPort, storage: StoragePort):
+    def __init__(
+        self,
+        queue: JobQueuePort,
+        status: JobStatusPort,
+        storage: StoragePort,
+        tracking: TrackingPort,  # 追加
+        artifacts_root: Path | None = None,
+    ):
         self.queue = queue
         self.status = status
         self.storage = storage
+        self.tracking = tracking  # 追加
 
     def run(self):
         while True:
@@ -745,27 +755,103 @@ class JobWorker:
         #     ]
         # )
         # 5. タイムアウト・リソース制限適用
-        # 6. run_id 取得（標準出力またはMLflow API）
-        # 7. status.update(job_id, status=completed, run_id=run_id)
+        # 6. metrics.json 読み込み
+        # 7. tracking.start_run(job_id)
+        # 8. tracking.log_params(metrics["params"])
+        # 9. tracking.log_metrics(metrics["metrics"])
+        # 10. run_id = tracking.end_run()
+        # 11. status.update(job_id, status=completed, run_id=run_id)
 ```
 
-##### 2. タイムアウト設定
+##### 2. metrics.json読み込み処理
 
-- [x] `small`クラス: 30分タイムアウト実装
-- [x] `medium`クラス: 60分タイムアウト実装
+- [ ] `_load_metrics()` メソッド実装: `{output_dir}/metrics.json` を読み込み
+- [ ] JSONパースエラーハンドリング実装
+- [ ] 必須フィールド検証実装（params, metrics）
 
-##### 3. エラーハンドリング
+```python
+def _load_metrics(self, output_dir: Path) -> dict[str, Any]:
+    """Load metrics.json from output directory.
+    
+    Expected format:
+    {
+        "params": {"method": "padim", "dataset": "mvtec_ad", ...},
+        "metrics": {"image_auc": 0.985, "pixel_pro": 0.92, ...}
+    }
+    """
+    metrics_file = output_dir / "metrics.json"
+    if not metrics_file.exists():
+        raise ValueError(f"metrics.json not found in {output_dir}")
+    
+    with open(metrics_file) as f:
+        data = json.load(f)
+    
+    if "params" not in data or "metrics" not in data:
+        raise ValueError("metrics.json must contain 'params' and 'metrics' fields")
+    
+    return data
+```
 
-- [x] OOM検知・エラー処理実装
-- [x] タイムアウト検知・エラー処理実装
-- [x] status.update(job_id, status=failed, error_message=...) 実装
-- [x] ユニットテスト作成（`tests/unit/test_job_worker.py`、モックポート使用）
+##### 3. MLflow記録処理
+
+- [ ] TrackingPort.start_run()呼び出し実装
+- [ ] TrackingPort.log_params()呼び出し実装
+- [ ] TrackingPort.log_metrics()呼び出し実装
+- [ ] TrackingPort.log_artifacts()呼び出し実装（output_dir全体）
+- [ ] TrackingPort.end_run()呼び出しとrun_id取得実装
+
+##### 4. タイムアウト設定
+
+- [ ] `small`クラス: 30分タイムアウト実装
+- [ ] `medium`クラス: 60分タイムアウト実装
+
+##### 5. エラーハンドリング
+
+- [ ] OOM検知・エラー処理実装
+- [ ] タイムアウト検知・エラー処理実装
+- [ ] metrics.json読み込みエラー処理実装
+- [ ] MLflow記録エラー処理実装
+- [ ] status.update(job_id, status=failed, error_message=...) 実装
+
+##### 6. worker/main.py更新
+
+- [ ] MLflowTrackingAdapterインスタンス化実装
+- [ ] JobWorkerへのtracking注入実装
+
+```python
+def _create_worker() -> JobWorker:
+    redis_url = os.getenv("REDIS_URL", "redis://redis:6379/0")
+    redis_client = Redis.from_url(redis_url)
+    queue = RedisJobQueueAdapter(redis_client)
+    status = RedisJobStatusAdapter(redis_client)
+    storage_root = Path(os.getenv("UPLOAD_ROOT", "/shared/submissions"))
+    storage = FileSystemStorageAdapter(storage_root)
+    tracking = MLflowTrackingAdapter()  # 追加
+    return JobWorker(
+        queue=queue,
+        status=status,
+        storage=storage,
+        tracking=tracking,  # 追加
+    )
+```
+
+##### 7. ユニットテスト更新
+
+- [ ] `tests/unit/test_job_worker.py` 更新
+  - モックTrackingPortを追加
+  - metrics.json読み込みテスト追加
+  - TrackingPort呼び出し検証テスト追加
+  - metrics.json不在時のエラーテスト追加
+  - 不正なmetrics.json形式のエラーテスト追加
 
 #### T13: 受け入れ基準
 
 - Workerがジョブを取り出して実行できる
+- 投稿者のコードが出力したmetrics.jsonを正しく読み込める
+- TrackingPort経由でMLflowにパラメータ・メトリクスを記録できる
+- run_idを取得してJobStatusに保存できる
 - タイムアウトが動作する
-- エラーハンドリングが動作する
+- エラーハンドリングが動作する（OOM、タイムアウト、metrics.json不在/不正）
 - ユニットテストが通過する
 
 ---
@@ -887,20 +973,29 @@ volumes:
 
 ##### 1. `tests/integration/test_e2e.py`
 
-- [x] エンドツーエンドテスト実装: 提出受付 → ジョブ投入 → 実行 → 結果取得
-- [x] 境界ケーステスト実装: ファイルサイズ上限、タイムアウト、重複投入
-- [x] エラーハンドリングテスト実装: 不正ファイル、OOM、MLflow接続失敗
-- [x] セキュリティテスト実装: パストラバーサル攻撃（`entrypoint="../../../etc/passwd"`）を拒否
-- [x] エントリポイント不正テスト実装: 存在しないファイル、非`.py`拡張子を拒否
+- [ ] エンドツーエンドテスト実装: 提出受付 → ジョブ投入 → 実行 → 結果取得
+  - Worker が metrics.json を読み取り、MLflow に記録することを確認
+- [ ] 境界ケーステスト実装: ファイルサイズ上限、タイムアウト、重複投入
+- [ ] エラーハンドリングテスト実装: 不正ファイル、OOM、MLflow接続失敗
+- [ ] metrics.json関連テスト実装:
+  - metrics.json不在時のエラー処理
+  - 不正なmetrics.json形式のエラー処理
+- [ ] セキュリティテスト実装: パストラバーサル攻撃（`entrypoint="../../../etc/passwd"`）を拒否
+- [ ] エントリポイント不正テスト実装: 存在しないファイル、非`.py`拡張子を拒否
 
 ##### 2. テストフィクスチャ
 
-- [x] サンプル提出ファイル作成（`main.py`, `config.yaml`）
-- [x] docker-compose環境でのテスト実行環境構築
+- [ ] サンプル提出ファイル作成（`main.py`, `config.yaml`）
+  - `main.py`: 画像データ処理をシミュレート、`metrics.json`を出力
+  - `config.yaml`: テスト用設定
+  - 投稿者のコードはMLflowに依存しない
+- [ ] docker-compose環境でのテスト実行環境構築
 
 #### T15: 受け入れ基準
 
 - 全統合テストが通過する
+- Workerがmetrics.jsonを正しく読み取り、MLflowに記録できる
+- 投稿者のコードがMLflowに依存せずに動作する
 - カバレッジ80%以上
 
 ---
