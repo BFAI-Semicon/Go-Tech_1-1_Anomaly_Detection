@@ -16,6 +16,10 @@ from src.ports.tracking_port import TrackingPort
 logger = logging.getLogger(__name__)
 
 
+class JobStatusAlreadyReported(RuntimeError):
+    """Raised when a failure has already been recorded to the status store."""
+
+
 class JobWorker:
     """Job queue consumer that executes submitted jobs."""
 
@@ -55,10 +59,21 @@ class JobWorker:
                 job = self.queue.dequeue(timeout=int(self.dequeue_timeout))
                 if not job:
                     continue
+                job_id = job.get("job_id")
                 try:
                     self.execute_job(job)
+                except JobStatusAlreadyReported:  # failure already recorded; avoid double update
+                    logger.exception("Failed to execute job %s (status already recorded)", job_id)
                 except Exception as exc:  # pragma: no cover - guards worker crash
-                    job_id = job.get("job_id")
+                    # Errors already handled in execute_job should not update status again.
+                    handled = (
+                        ValueError,
+                        subprocess.TimeoutExpired,
+                        subprocess.CalledProcessError,
+                    )
+                    if isinstance(exc, handled):
+                        logger.exception("Failed to execute job %s (already handled)", job_id)
+                        continue
                     if job_id:
                         self.status.update(job_id, JobStatus.FAILED, error=str(exc))
                     logger.exception("Failed to execute job %s", job_id)
@@ -94,12 +109,7 @@ class JobWorker:
             # Load metrics.json and log to MLflow
             logger.info(f"Loading metrics from {output_dir}/metrics.json")
             metrics_data = self._load_metrics(output_dir)
-            logger.info("Starting MLflow run")
-            self.tracking.start_run(job_id)
-            self.tracking.log_params(metrics_data["params"])
-            self.tracking.log_metrics(metrics_data["metrics"])
-            self.tracking.log_artifact(str(output_dir))
-            run_id = self.tracking.end_run()
+            run_id = self._record_metrics(job_id, metrics_data, output_dir)
 
             logger.info(f"Job {job_id} completed successfully! MLflow run_id: {run_id}")
             self.status.update(job_id, JobStatus.COMPLETED, run_id=run_id)
@@ -136,6 +146,22 @@ class JobWorker:
         if resource_class:
             return self.RESOURCE_TIMEOUTS.get(resource_class, self.DEFAULT_TIMEOUT)
         return self.DEFAULT_TIMEOUT
+
+    def _record_metrics(self, job_id: str, metrics_data: dict[str, Any], output_dir: Path) -> str:
+        """Log metrics/artifacts via the tracking adapter and handle failures."""
+        try:
+            logger.info("Starting MLflow run")
+            self.tracking.start_run(job_id)
+            self.tracking.log_params(metrics_data["params"])
+            self.tracking.log_metrics(metrics_data["metrics"])
+            self.tracking.log_artifact(str(output_dir))
+            run_id = self.tracking.end_run()
+            return run_id
+        except Exception as exc:
+            error_message = f"MLflow recording failed: {exc}"
+            logger.error(error_message)
+            self.status.update(job_id, JobStatus.FAILED, error=error_message)
+            raise JobStatusAlreadyReported(error_message) from exc
 
     def _oom_message(self, stderr: str) -> str | None:
         normalized = stderr.lower()

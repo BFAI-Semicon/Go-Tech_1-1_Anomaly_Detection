@@ -292,6 +292,39 @@ def test_execute_job_loads_metrics_and_logs_to_mlflow(
     assert ("end_run", None) in tracking.calls
 
 
+def test_execute_job_mlflow_failure_updates_status(
+    monkeypatch: Any, worker: JobWorker, status: DummyStatus, storage: DummyStorage, tracking: DummyTracking
+) -> None:
+    job = {
+        "job_id": "job-mlflow",
+        "submission_id": "sub-1",
+        "entrypoint": "main.py",
+        "config_file": "config.yaml",
+    }
+
+    # Create metrics.json
+    output_dir = worker.artifacts_root / job["job_id"]
+    output_dir.mkdir(parents=True, exist_ok=True)
+    metrics_file = output_dir / "metrics.json"
+    metrics_file.write_text('{"params": {"method": "padim"}, "metrics": {"auc": 0.95}}')
+
+    result = MagicMock()
+    result.stdout = b""
+    monkeypatch.setattr("src.worker.job_worker.subprocess.run", MagicMock(return_value=result))
+
+    worker.storage = storage
+    worker.status = status
+    worker.tracking = tracking
+    worker.queue = MagicMock()
+    monkeypatch.setattr(worker.tracking, "start_run", MagicMock(side_effect=RuntimeError("not reachable")))
+
+    with pytest.raises(RuntimeError):
+        worker.execute_job(job)
+
+    assert status.calls[-1][1] == JobStatus.FAILED
+    assert "MLflow recording failed" in status.calls[-1][2]["error"]
+
+
 def test_execute_job_fails_when_metrics_json_missing(
     monkeypatch: Any, worker: JobWorker, status: DummyStatus, storage: DummyStorage
 ) -> None:
