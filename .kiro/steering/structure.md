@@ -188,14 +188,16 @@ from src.adapters.filesystem_storage_adapter import FileSystemStorageAdapter
 - **ユニットテスト**: ドメイン・ポート実装（モックアダプタ使用）
   - **Location**: `/tests/unit/`
   - **Focus**: ドメインロジック・アダプタの単体テスト
+  - **Count**: 55件
 - **統合テスト**: docker-compose環境でエンドツーエンド（実Redis・MLflow使用）
   - **Location**: `/tests/integration/`
-  - **Coverage**: エンドツーエンドフロー、セキュリティ（パストラバーサル）、エラーハンドリング（OOM、タイムアウト）
+  - **Coverage**: エンドツーエンドフロー、metrics.json読み取り、セキュリティ（パストラバーサル）、エラーハンドリング（OOM、タイムアウト、metrics.json不在/不正）
+  - **Count**: 10件
 - **境界テスト**: ファイルサイズ上限、タイムアウト、重複投入、OOM等
-- **Overall Coverage**: 46.3%（目標80%、継続的改善中）
-- **Test Functions**: 77件
+- **Overall Coverage**: 90.8%（目標80%達成）
+- **Total Tests**: 65件
 
 ## Maintenance
 
-- updated_at: 2025-12-17
-- reason: プロジェクト状態を最新化（Streamlit UI削除、テストカバレッジ実測値反映、実装進捗更新）
+- updated_at: 2025-12-18
+- reason: T15統合テスト完了に伴う更新（カバレッジ90.8%達成、テスト戦略詳細化）

@@ -78,12 +78,18 @@
 
 - **Framework**: `pytest`
 - **Coverage**: 80%以上推奨（ドメインロジック・ポート実装は必須）
-  - **現在の達成状況**: 46.3%（継続的改善中）
-  - **テスト数**: 77件のテスト関数
+  - **現在の達成状況**: 90.8%（目標達成）
+  - **テスト数**: 65件（ユニット55件 + 統合10件）
 - **Integration Test**: docker-compose環境でエンドツーエンドテスト
 - **Test Organization**:
-  - `/tests/unit/` - モックアダプタを使用した高速テスト
-  - `/tests/integration/` - 実Redis・MLflowを使用したE2Eテスト
+  - `/tests/unit/` - モックアダプタを使用した高速テスト（55件）
+  - `/tests/integration/` - 実Redis・MLflowを使用したE2Eテスト（10件）
+- **Test Coverage**:
+  - エンドツーエンドフロー（提出→ジョブ→実行→結果取得）
+  - metrics.json読み取りとMLflow記録
+  - セキュリティ（パストラバーサル、不正エントリポイント）
+  - エラーハンドリング（OOM、タイムアウト、metrics.json不在/不正）
+  - 境界ケース（ファイルサイズ上限、重複投入）
 
 ## Development Environment
 
@@ -195,5 +201,5 @@ docker-compose -f docker-compose.yml up --build
 
 ## Maintenance
 
-- updated_at: 2025-12-17
-- reason: プロジェクト状態を最新化（Streamlit UI削除、テストカバレッジ実測値反映、実装進捗更新）
+- updated_at: 2025-12-18
+- reason: T15統合テスト完了に伴う更新（カバレッジ90.8%達成、テスト詳細追加）
