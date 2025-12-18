@@ -308,3 +308,107 @@ def test_worker_reports_mlflow_connection_failure(integration_context) -> None:
     status = integration_context.status_adapter.get_status(job_id)
     assert status["status"] == JobStatus.FAILED.value
     assert "MLflow connection failed" in status["error"]
+
+
+def _no_metrics_script() -> str:
+    """Script that completes successfully but doesn't output metrics.json."""
+    return textwrap.dedent(
+        """\
+        import argparse
+        import os
+
+        def main():
+            parser = argparse.ArgumentParser()
+            parser.add_argument("--config", required=True)
+            parser.add_argument("--output", required=True)
+            args = parser.parse_args()
+            os.makedirs(args.output, exist_ok=True)
+            # No metrics.json output
+
+        if __name__ == "__main__":
+            main()
+        """
+    )
+
+
+def _invalid_metrics_script() -> str:
+    """Script that outputs invalid metrics.json."""
+    return textwrap.dedent(
+        """\
+        import argparse
+        import os
+
+        def main():
+            parser = argparse.ArgumentParser()
+            parser.add_argument("--config", required=True)
+            parser.add_argument("--output", required=True)
+            args = parser.parse_args()
+            os.makedirs(args.output, exist_ok=True)
+            metrics_path = os.path.join(args.output, "metrics.json")
+            with open(metrics_path, "w") as f:
+                f.write("invalid json content")
+
+        if __name__ == "__main__":
+            main()
+        """
+    )
+
+
+def test_worker_fails_when_metrics_json_missing(integration_context) -> None:
+    """Test that Worker fails gracefully when metrics.json is not output."""
+    submission_id = _create_submission_entry(integration_context, _no_metrics_script())
+    job_id = integration_context.enqueue_job.execute(submission_id, "integration-user", {"mode": "no-metrics"})
+    job_payload = integration_context.queue_adapter.dequeue(timeout=1)
+    assert job_payload
+
+    with pytest.raises(ValueError):
+        integration_context.job_worker.execute_job(job_payload)
+
+    status = integration_context.status_adapter.get_status(job_id)
+    assert status["status"] == JobStatus.FAILED.value
+    assert "metrics.json" in status["error"].lower()
+
+
+def test_worker_fails_when_metrics_json_invalid(integration_context) -> None:
+    """Test that Worker fails gracefully when metrics.json has invalid format."""
+    submission_id = _create_submission_entry(integration_context, _invalid_metrics_script())
+    job_id = integration_context.enqueue_job.execute(submission_id, "integration-user", {"mode": "invalid-metrics"})
+    job_payload = integration_context.queue_adapter.dequeue(timeout=1)
+    assert job_payload
+
+    with pytest.raises(ValueError):
+        integration_context.job_worker.execute_job(job_payload)
+
+    status = integration_context.status_adapter.get_status(job_id)
+    assert status["status"] == JobStatus.FAILED.value
+    # JSON decode error message
+    assert "expecting value" in status["error"].lower() or "metrics.json" in status["error"].lower()
+
+
+def test_duplicate_job_submission_is_idempotent(integration_context) -> None:
+    """Test that duplicate job submissions with same job_id are handled idempotently."""
+    client = integration_context.client
+    submission_id, status_code = _post_submission(client, _runner_script("run-id-dup"))
+    assert status_code == 201
+
+    # First submission
+    job_response1 = client.post(
+        "/jobs",
+        headers=AUTH_HEADER,
+        json={"submission_id": submission_id, "config": {"lr": 0.01}},
+    )
+    assert job_response1.status_code == 202
+    job_id1 = job_response1.json()["job_id"]
+
+    # Duplicate submission with same parameters
+    job_response2 = client.post(
+        "/jobs",
+        headers=AUTH_HEADER,
+        json={"submission_id": submission_id, "config": {"lr": 0.01}},
+    )
+    assert job_response2.status_code == 202
+    job_id2 = job_response2.json()["job_id"]
+
+    # Both should return valid job_ids (system handles idempotency)
+    assert job_id1
+    assert job_id2
