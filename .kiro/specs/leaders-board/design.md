@@ -731,7 +731,7 @@ services:
       - "8501:8501"
     environment:
       - API_URL=http://api:8010
-      - MLFLOW_URL=http://mlflow:5010
+      - MLFLOW_TRACKING_URI=http://mlflow:5010
     depends_on:
       - api
 

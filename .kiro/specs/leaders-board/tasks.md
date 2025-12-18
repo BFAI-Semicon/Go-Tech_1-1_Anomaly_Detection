@@ -1009,13 +1009,13 @@ volumes:
 
 ##### 1. `src/streamlit/app.py`
 
-- [ ] 提出フォーム実装: ファイルアップロード、entrypoint/config_file指定
-- [ ] ジョブ一覧実装: 状態表示、ログ表示
-- [ ] MLflowリンク実装: run_id からMLflow UIへのリンク
+- [x] 提出フォーム実装: ファイルアップロード、entrypoint/config_file指定
+- [x] ジョブ一覧実装: 状態表示、ログ表示
+- [x] MLflowリンク実装: run_id からMLflow UIへのリンク
 
 ##### 2. docker-compose追加
 
-- [ ] streamlitサービスをdocker-composeに追加
+- [x] streamlitサービスをdocker-composeに追加
 
 ```yaml
 streamlit:

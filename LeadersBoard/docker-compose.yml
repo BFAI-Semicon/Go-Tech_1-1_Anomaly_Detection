@@ -80,5 +80,21 @@ services:
       --allowed-hosts "*"
     restart: unless-stopped
 
+  streamlit:
+    build:
+      context: .
+      dockerfile: docker/streamlit.Dockerfile
+    env_file:
+      - .env
+    environment:
+      - API_URL=${API_URL:-http://api:8010}
+      - MLFLOW_URL=${MLFLOW_URL:-http://mlflow:5010}
+    ports:
+      - "8501:8501"
+    depends_on:
+      - api
+      - mlflow
+    restart: unless-stopped
+
 volumes:
   redis-data:
