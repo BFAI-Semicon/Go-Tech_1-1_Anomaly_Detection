@@ -19,13 +19,16 @@
 - **Queue**: Redis（非同期ジョブ投入、at-least-once配信）
 - **Worker**: GPUコンテナ（nvidia-container-runtime、anomalib学習・評価）
 - **Experiment Tracking**: MLflow Tracking Server（パラメータ・メトリクス・アーティファクト記録）
-- **UI**: MLflow UI（実験可視化）、将来的にStreamlit UI追加予定
+- **UI**:
+  - **MLflow UI**: 実験可視化（パラメータ・メトリクス・アーティファクト比較）
+  - **Streamlit UI**: 提出フォーム、ジョブ一覧、ログ表示（ポート8501）
 
 ### Container Runtime
 
 - **Base Image (GPU)**: `nvcr.io/nvidia/pytorch:25.11-py3`（PyTorch 2.10 開発版、CUDA 対応）
 - **起動方式（API）**: `uvicorn`（`src.api.main:app`）
 - **起動方式（Worker）**: `python -m src.worker.main`
+- **起動方式（Streamlit）**: `streamlit run src/streamlit/app.py --server.port 8501`
 
 ## Key Libraries
 
@@ -34,6 +37,7 @@
 - **Redis**: キュー・状態管理（`redis-py`）
 - **FastAPI**: REST API（認証、バリデーション、レート制限）
 - **Pydantic**: 入力正規化・バリデーション
+- **Streamlit**: Web UI（提出フォーム、ジョブ監視、ログ表示）
 
 ## Submission Handling
 
@@ -82,7 +86,7 @@
   - **テスト数**: 65件（ユニット55件 + 統合10件）
 - **Integration Test**: docker-compose環境でエンドツーエンドテスト
 - **Test Organization**:
-  - `/tests/unit/` - モックアダプタを使用した高速テスト（55件）
+  - `/tests/unit/` - モックアダプタを使用した高速テスト（ドメイン・アダプタ・API・Worker・Streamlit UI）
   - `/tests/integration/` - 実Redis・MLflowを使用したE2Eテスト（10件）
 - **Test Coverage**:
   - エンドツーエンドフロー（提出→ジョブ→実行→結果取得）
@@ -90,6 +94,7 @@
   - セキュリティ（パストラバーサル、不正エントリポイント）
   - エラーハンドリング（OOM、タイムアウト、metrics.json不在/不正）
   - 境界ケース（ファイルサイズ上限、重複投入）
+  - Streamlit UI（提出フォーム、ジョブ一覧、ログ取得、MLflowリンク生成）
 
 ## Development Environment
 
@@ -199,7 +204,45 @@ docker-compose -f docker-compose.yml up --build
 - `TrackingPort.end_run()` から `run_id` を取得して `JobStatus.COMPLETED` を更新する。
 - 例外・タイムアウト・OOM・metrics.json 不在/不正時には `FAILED` として `error` メッセージを保存する。
 
+## Streamlit UI Implementation
+
+### UI Design
+
+- **Thin Client**: REST API呼び出しでバックエンドと通信（ドメインロジック非依存）
+- **Session State**: ジョブ一覧をStreamlitセッションステートで管理
+- **Error Handling**: API呼び出し失敗時のユーザーフレンドリーなエラー表示
+
+### Key Features
+
+1. **提出フォーム**: ファイルアップロード、エントリポイント/設定ファイル指定、メタデータJSON入力
+2. **ジョブ一覧**: Job ID、Submission ID、ステータス表示
+3. **MLflow連携**: `run_id`からMLflow UI runリンクを自動生成・表示
+4. **ログ表示**: `GET /jobs/{job_id}/logs`経由でワーカーログを表示
+
+### Integration Pattern
+
+```python
+# APIクライアント関数（requests使用）
+submit_submission(api_url, token, files, ...) -> dict
+create_job(api_url, token, submission_id, config) -> dict
+fetch_job_status(api_url, token, job_id) -> dict | None
+fetch_job_logs(api_url, token, job_id) -> str
+
+# MLflowリンク生成
+build_mlflow_run_link(mlflow_url, run_id) -> str
+```
+
+### Environment Variables
+
+- `API_URL`: FastAPI エンドポイント（デフォルト: `http://api:8010`）
+- `MLFLOW_URL`: MLflow UI URL（デフォルト: `http://mlflow:5010`）
+
+### Streamlit Testing
+
+- ユニットテスト: `tests/unit/test_streamlit_app.py`（モックリクエスト使用）
+- Streamlit未インストール環境でもテスト可能（オプショナルインポート）
+
 ## Maintenance
 
 - updated_at: 2025-12-18
-- reason: T15統合テスト完了に伴う更新（カバレッジ90.8%達成、テスト詳細追加）
+- reason: Streamlit UI実装追加（提出フォーム、ジョブ監視、ログ表示機能）

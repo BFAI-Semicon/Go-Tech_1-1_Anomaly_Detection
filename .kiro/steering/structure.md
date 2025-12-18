@@ -67,6 +67,19 @@ API 側で Redis カウンター（`leaderboard:rate:{user_id}`）を参照し�
 **Purpose**: Redisキュー消費、anomalib学習・評価、MLflow記録  
 **Example**: `JobWorker` クラス（`BRPOP` でキュー待機、ジョブ実行、TrackingPort経由で記録）
 
+### Streamlit UI層
+
+**Location**: `/src/streamlit/`  
+**Purpose**: Web UI（提出フォーム、ジョブ監視、ログ表示）  
+**Pattern**: Thin client - REST API呼び出しのみ、ドメインロジック非依存  
+**Example**:
+
+- `submit_submission()`: `POST /submissions` 経由でファイルアップロード
+- `create_job()`: `POST /jobs` 経由でジョブ投入
+- `fetch_job_status()`: `GET /jobs/{id}/status` 経由でステータス取得
+- `fetch_job_logs()`: `GET /jobs/{id}/logs` 経由でログ取得
+- `build_mlflow_run_link()`: `run_id` から MLflow UI リンク生成
+
 #### エントリポイントのライフサイクル（パターン）
 
 - 起動時にログ初期化 → 「待機開始」ログ出力
@@ -112,10 +125,11 @@ API 側で Redis カウンター（`leaderboard:rate:{user_id}`）を参照し�
 **Purpose**: docker-compose構成（本番 + 開発オーバーライド）  
 **Example**:
 
-- `docker-compose.yml`: 本番用構成ファイル（api, worker, redis, mlflow）
+- `docker-compose.yml`: 本番用構成ファイル（api, worker, redis, mlflow, streamlit）
 - `docker-compose.override.yml`: 開発用オーバーライド（apiのtargetをdevに変更、ソースマウント）
 - `docker/api.Dockerfile`: API用Dockerfile（マルチステージ: dev/prod）
 - `docker/worker.Dockerfile`: Worker用Dockerfile（GPU対応）
+- `docker/streamlit.Dockerfile`: Streamlit UI用Dockerfile（Python 3.13-slim、streamlit + requests）
 - `.env.example`: 環境変数テンプレート
 
 **マルチステージビルド**:
@@ -176,6 +190,7 @@ from src.adapters.filesystem_storage_adapter import FileSystemStorageAdapter
 
 - **API**: 認証、入力正規化・バリデーション、冪等化、レート制限、ジョブ投入、ステータス集約、`run_id` とMLflow UIリンク返却（MLflow DB直読なし）
 - **Worker**: 学習/評価実行、TrackingPort経由で記録、JobStatusPort経由で進捗更新
+- **Streamlit UI**: 提出フォーム、ジョブ監視、ログ表示（REST API経由、ドメイン非依存）
 - **ドメイン**: ビジネスロジック（外部実装に非依存）
 - **ポート**: 抽象インタフェース（実装詳細を隠蔽）
 - **アダプタ**: 具体実装（差し替え可能）
@@ -200,4 +215,4 @@ from src.adapters.filesystem_storage_adapter import FileSystemStorageAdapter
 ## Maintenance
 
 - updated_at: 2025-12-18
-- reason: T15統合テスト完了に伴う更新（カバレッジ90.8%達成、テスト戦略詳細化）
+- reason: Streamlit UI実装追加（`/src/streamlit/app.py`、docker構成、テスト追加）
