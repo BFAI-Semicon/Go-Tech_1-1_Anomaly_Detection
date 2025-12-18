@@ -36,14 +36,21 @@ class RedisJobStatusAdapter(JobStatusPort):
             "user_id": user_id,
             "status": str(JobStatus.PENDING.value),
             "created_at": created_at,
+            "updated_at": created_at,
         }
         self.redis.hset(key, mapping={k: str(v) for k, v in payload.items()})
         self._ensure_ttl(key)
 
     def update(self, job_id: str, status: JobStatus, **kwargs: Any) -> None:
         key = self.key_for(job_id)
-        payload = {"status": str(status.value)}
-        payload.update(self._str_kwargs(kwargs))
+        updated_at = datetime.now(UTC).isoformat()
+        payload = {
+            "status": str(status.value),
+            "updated_at": updated_at,
+        }
+        # allow additional fields but do not let callers override updated_at
+        filtered_kwargs = {k: v for k, v in kwargs.items() if k != "updated_at"}
+        payload.update(self._str_kwargs(filtered_kwargs))
         self.redis.hset(key, mapping={k: str(v) for k, v in payload.items()})
         self._ensure_ttl(key)
 

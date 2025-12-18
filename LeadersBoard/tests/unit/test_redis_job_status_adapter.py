@@ -23,6 +23,8 @@ def test_create_sets_hash_and_ttl() -> None:
     assert stored["submission_id"] == "sub-1"
     assert stored["user_id"] == "user-1"
     assert stored["status"] == JobStatus.PENDING.value
+    assert "created_at" in stored
+    assert "updated_at" in stored
     assert redis_client.ttl(key) > 0
 
 
@@ -38,6 +40,7 @@ def test_update_overwrites_status_and_additional_fields() -> None:
     assert stored["status"] == JobStatus.RUNNING.value
     assert stored["run_id"] == "run-2"
     assert stored["error_message"] == "timeout"
+    assert "updated_at" in stored
 
 def test_get_status_returns_none_for_missing_job() -> None:
     redis_client = fakeredis.FakeRedis()
