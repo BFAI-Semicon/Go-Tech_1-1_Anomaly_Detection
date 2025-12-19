@@ -127,7 +127,7 @@ def _render_submission_form(api_url: str, mlflow_url: str) -> None:
                 api_url=api_url,
                 token=token,
                 submission_id=submission_id,
-                config={"resource_class": "small"},
+                config={"resource_class": "medium"},
             )
             job_info = {
                 "job_id": job_resp.get("job_id"),

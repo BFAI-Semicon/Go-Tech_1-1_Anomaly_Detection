@@ -30,6 +30,8 @@ services:
     environment:
       - MLFLOW_TRACKING_URI=${MLFLOW_TRACKING_URI:-http://mlflow:5010}
       - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - HF_HOME=/tmp/huggingface
+      - TORCH_HOME=/tmp/torch
     volumes:
       - ./shared:/shared
     deploy:

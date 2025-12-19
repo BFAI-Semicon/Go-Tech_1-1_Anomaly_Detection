@@ -11,7 +11,7 @@ from src.ports.storage_port import StoragePort
 class CreateSubmission:
     """提出を受け付けてストレージに保存するユースケース."""
 
-    MAX_FILE_SIZE = 100 * 1024 * 1024  # 100MB
+    MAX_FILE_SIZE = 500 * 1024 * 1024  # 500MB
     ALLOWED_EXTENSIONS = {".py", ".yaml", ".zip", ".tar.gz"}
 
     def __init__(self, storage: StoragePort) -> None:

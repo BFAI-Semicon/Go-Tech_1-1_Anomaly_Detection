@@ -19,6 +19,7 @@ CFA+
 CFlow
 CFlow-AD
 charliermarsh
+cifar
 ckpt
 CLAHE
 Codabench

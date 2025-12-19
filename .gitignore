@@ -1,5 +1,6 @@
 __pycache__
 .coverage
 .DS_Store
-.mypy_cache
 .env
+.mypy_cache
+*.zip
