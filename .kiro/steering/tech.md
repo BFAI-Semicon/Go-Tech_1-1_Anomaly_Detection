@@ -218,9 +218,10 @@ docker-compose -f docker-compose.yml up --build
 ### Key Features
 
 1. **提出フォーム**: ファイルアップロード、エントリポイント/設定ファイル指定、メタデータJSON入力
-2. **ジョブ一覧**: Job ID、Submission ID、ステータス表示
-3. **MLflow連携**: `run_id`からMLflow UI runリンクを自動生成・表示
-4. **ログ表示**: `GET /jobs/{job_id}/logs`経由でワーカーログを表示
+2. **ジョブ一覧**: Job ID、Submission ID、ステータス表示（色分け対応）
+3. **自動更新**: `@st.fragment(run_every="5s")` による5秒ごとの自動更新（実行中ジョブがある場合のみメッセージ表示）
+4. **MLflow連携**: `run_id`からMLflow UI runリンクを自動生成・表示
+5. **ログ表示**: `GET /jobs/{job_id}/logs`経由でワーカーログを表示
 
 ### Integration Pattern
 
@@ -233,6 +234,13 @@ fetch_job_logs(api_url, token, job_id) -> str
 
 # MLflowリンク生成
 build_mlflow_run_link(mlflow_url, run_id) -> str
+
+# ステータス管理
+has_running_jobs(jobs) -> bool  # pending/running検出
+get_status_color(status) -> str  # ステータス絵文字（✅❌⏳❓）
+
+# Fragment自動更新（main関数内で動的適用）
+render_jobs_with_auto_refresh = st.fragment(run_every="5s")(_render_jobs)
 ```
 
 ### Environment Variables
@@ -248,4 +256,4 @@ build_mlflow_run_link(mlflow_url, run_id) -> str
 ## Maintenance
 
 - updated_at: 2025-12-22
-- reason: docker-compose構成の正確な場所を反映（`.devcontainer/docker-compose.override.yml`、workspaceFolder `/app`、Streamlit追加）
+- reason: Streamlit UI自動更新機能追加（Fragment自動更新パターン、ステータス色分け、実行中ジョブ検出）

@@ -79,6 +79,13 @@ API 側で Redis カウンター（`leaderboard:rate:{user_id}`）を参照し�
 - `fetch_job_status()`: `GET /jobs/{id}/status` 経由でステータス取得
 - `fetch_job_logs()`: `GET /jobs/{id}/logs` 経由でログ取得
 - `build_mlflow_run_link()`: `run_id` から MLflow UI リンク生成
+- `has_running_jobs()`: 実行中ジョブ検出
+- `get_status_color()`: ステータス色分け（✅❌⏳❓）
+
+**Auto-refresh Pattern**:
+- `@st.fragment(run_every="5s")` で `_render_jobs()` を装飾（main関数内で動的適用）
+- 実行中（pending/running）ジョブがある場合のみ自動更新メッセージを表示
+- 提出フォームの入力状態は保持される（Fragmentスコープ分離）
 
 #### エントリポイントのライフサイクル（パターン）
 
@@ -215,4 +222,4 @@ from src.adapters.filesystem_storage_adapter import FileSystemStorageAdapter
 ## Maintenance
 
 - updated_at: 2025-12-22
-- reason: docker-compose構成の正確な場所を反映（`.devcontainer/docker-compose.override.yml`、workspaceFolder `/app`）
+- reason: Streamlit UI自動更新パターン追加（Fragment自動更新、ステータス色分け、実行中ジョブ検出）
