@@ -76,3 +76,36 @@ def test_add_job_to_state_deduplicates_and_keeps_latest_first() -> None:
     assert jobs[0]["job_id"] == "job-1"
     assert jobs[1]["job_id"] == "job-2"
     assert len(jobs) == 2
+
+
+def test_has_running_jobs_detects_pending_and_running() -> None:
+    """実行中ジョブを検出できることを確認"""
+    jobs_with_running = [
+        {"job_id": "job-1", "status": "running"},
+        {"job_id": "job-2", "status": "completed"},
+    ]
+    assert streamlit_app.has_running_jobs(jobs_with_running) is True
+
+    jobs_with_pending = [
+        {"job_id": "job-1", "status": "pending"},
+        {"job_id": "job-2", "status": "completed"},
+    ]
+    assert streamlit_app.has_running_jobs(jobs_with_pending) is True
+
+    jobs_all_completed = [
+        {"job_id": "job-1", "status": "completed"},
+        {"job_id": "job-2", "status": "failed"},
+    ]
+    assert streamlit_app.has_running_jobs(jobs_all_completed) is False
+
+    empty_jobs: list[dict[str, str]] = []
+    assert streamlit_app.has_running_jobs(empty_jobs) is False
+
+
+def test_get_status_color_returns_correct_emoji() -> None:
+    """ステータスに応じた色分け絵文字を返すことを確認"""
+    assert streamlit_app.get_status_color("completed") == "✅"
+    assert streamlit_app.get_status_color("failed") == "❌"
+    assert streamlit_app.get_status_color("running") == "⏳"
+    assert streamlit_app.get_status_color("pending") == "⏳"
+    assert streamlit_app.get_status_color("unknown") == "❓"

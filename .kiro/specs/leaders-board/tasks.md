@@ -1039,6 +1039,34 @@ streamlit:
 
 ---
 
+### T16.1: Streamlit UI自動更新機能
+
+**優先度**: P2  
+**依存**: T16
+
+#### T16.1: 実装内容
+
+- [x] `@st.fragment(run_every="5s")` で `_render_jobs()` を装飾
+- [x] 実行中（pending/running）ジョブがある場合のみ自動更新メッセージを表示
+- [x] ステータスの色分け表示（completed: 緑、failed: 赤、running: 青）
+- [ ] 手動更新ボタン追加（オプション）
+
+```python
+@st.fragment(run_every="5s")
+def _render_jobs(api_url: str, mlflow_url: str) -> None:
+    # ジョブ一覧表示
+    # 実行中ジョブ検出 → has_running_jobs フラグ
+    # has_running_jobs=True なら自動更新メッセージ表示
+```
+
+#### T16.1: 受け入れ基準
+
+- ジョブ一覧が5秒ごとに自動更新される
+- 提出フォームの入力状態が保持される
+- 実行中ジョブがない場合は自動更新メッセージが非表示
+
+---
+
 ### T17: ユーザー認証機能実装
 
 **優先度**: P2  

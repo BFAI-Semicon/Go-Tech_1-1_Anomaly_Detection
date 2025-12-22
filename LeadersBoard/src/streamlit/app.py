@@ -8,9 +8,9 @@ from typing import Any, cast
 import requests
 
 try:  # Streamlitは実行時にのみ必要。テストでは未インストールでも動作させる。
-    import streamlit as st  # type: ignore
+    import streamlit as st  # type: ignore[import-not-found]
 except ImportError:  # pragma: no cover - テスト環境ではstreamlitが無いことを許容
-    st = None  # type: ignore
+    st = None  # type: ignore[assignment]
 
 
 def build_mlflow_run_link(mlflow_url: str, run_id: str) -> str:
@@ -79,6 +79,23 @@ def add_job_to_state(state: dict[str, Any], job: dict[str, Any]) -> list[dict[st
     jobs.insert(0, job)
     state["jobs"] = jobs
     return jobs
+
+
+def has_running_jobs(jobs: list[dict[str, Any]]) -> bool:
+    """実行中（pending/running）のジョブが存在するか確認する。"""
+    return any(job.get("status") in ("pending", "running") for job in jobs)
+
+
+def get_status_color(status: str) -> str:
+    """ステータスに応じた絵文字を返す。"""
+    if status == "completed":
+        return "✅"
+    elif status == "failed":
+        return "❌"
+    elif status in ("pending", "running"):
+        return "⏳"
+    else:
+        return "❓"
 
 
 def _render_submission_form(api_url: str, mlflow_url: str) -> None:
@@ -152,6 +169,9 @@ def _render_jobs(api_url: str, mlflow_url: str) -> None:
         st.info("まだジョブがありません。フォームから投稿してください。")
         return
 
+    # 実行中ジョブの検出用
+    running_jobs_detected = False
+
     for job in list(jobs):
         job_id = cast(str | None, job.get("job_id"))
         submission_id = job.get("submission_id")
@@ -166,8 +186,16 @@ def _render_jobs(api_url: str, mlflow_url: str) -> None:
                     status_data = fetch_job_status(api_url, token, job_id)
                 except Exception:  # pragma: no cover
                     status_data = None
-            status_text = status_data.get("status") if status_data else job.get("status", "unknown")
-            st.metric("Status", status_text)
+            status_text = str(status_data.get("status") if status_data else job.get("status", "unknown"))
+
+            # 実行中ジョブの検出
+            if status_text in ("pending", "running"):
+                running_jobs_detected = True
+
+            # ステータス表示（色分け）
+            emoji = get_status_color(status_text)
+            st.markdown(f"{emoji} **{status_text}**")
+
             if status_data and status_data.get("run_id"):
                 link = build_mlflow_run_link(mlflow_url, status_data["run_id"])
                 st.markdown(f"[MLflow run]({link})")
@@ -184,6 +212,10 @@ def _render_jobs(api_url: str, mlflow_url: str) -> None:
                     except Exception as exc:  # pragma: no cover
                         st.error(f"ログ取得に失敗しました: {exc}")
 
+    # 自動更新の状態表示
+    if running_jobs_detected:
+        st.caption("⏳ 実行中のジョブがあります。5秒ごとに自動更新されます。")
+
 
 def main() -> None:  # pragma: no cover - UI起動時に実行
     if st is None:
@@ -195,7 +227,10 @@ def main() -> None:  # pragma: no cover - UI起動時に実行
 
     _render_submission_form(api_url, mlflow_url)
     st.divider()
-    _render_jobs(api_url, mlflow_url)
+
+    # Fragment自動更新を適用
+    render_jobs_with_auto_refresh = st.fragment(run_every="5s")(_render_jobs)
+    render_jobs_with_auto_refresh(api_url, mlflow_url)
 
 
 if __name__ == "__main__":  # pragma: no cover
