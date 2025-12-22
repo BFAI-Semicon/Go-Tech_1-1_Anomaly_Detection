@@ -121,12 +121,12 @@ API 側で Redis カウンター（`leaderboard:rate:{user_id}`）を参照し�
 
 ### Docker構成
 
-**Location**: `LeadersBoard/`  
+**Location**: `LeadersBoard/` + `.devcontainer/`  
 **Purpose**: docker-compose構成（本番 + 開発オーバーライド）  
 **Example**:
 
-- `docker-compose.yml`: 本番用構成ファイル（api, worker, redis, mlflow, streamlit）
-- `docker-compose.override.yml`: 開発用オーバーライド（apiのtargetをdevに変更、ソースマウント）
+- `LeadersBoard/docker-compose.yml`: 本番用構成ファイル（api, worker, redis, mlflow, streamlit）
+- `.devcontainer/docker-compose.override.yml`: 開発用オーバーライド（apiのtargetをdevに変更、ソースマウント）
 - `docker/api.Dockerfile`: API用Dockerfile（マルチステージ: dev/prod）
 - `docker/worker.Dockerfile`: Worker用Dockerfile（GPU対応）
 - `docker/streamlit.Dockerfile`: Streamlit UI用Dockerfile（Python 3.13-slim、streamlit + requests）
@@ -135,7 +135,7 @@ API 側で Redis カウンター（`leaderboard:rate:{user_id}`）を参照し�
 **マルチステージビルド**:
 
 - `api.Dockerfile`は`dev`と`prod`の2ステージを持つ
-- 開発時: `docker-compose.override.yml`で`target: dev`を指定
+- 開発時: `.devcontainer/docker-compose.override.yml`で`target: dev`を指定、`sleep infinity`で手動起動
 - 本番時: `docker-compose.yml`のみ使用（`target: prod`がデフォルト）
 
 **devcontainer.json設定**:
@@ -144,10 +144,10 @@ API 側で Redis カウンター（`leaderboard:rate:{user_id}`）を参照し�
 {
   "dockerComposeFile": [
     "../LeadersBoard/docker-compose.yml",
-    "../LeadersBoard/docker-compose.override.yml"
+    "./docker-compose.override.yml"
   ],
   "service": "api",
-  "workspaceFolder": "/workspaces/2025"
+  "workspaceFolder": "/app"
 }
 ```
 
@@ -214,5 +214,5 @@ from src.adapters.filesystem_storage_adapter import FileSystemStorageAdapter
 
 ## Maintenance
 
-- updated_at: 2025-12-18
-- reason: Streamlit UI実装追加（`/src/streamlit/app.py`、docker構成、テスト追加）
+- updated_at: 2025-12-22
+- reason: docker-compose構成の正確な場所を反映（`.devcontainer/docker-compose.override.yml`、workspaceFolder `/app`）

@@ -107,19 +107,19 @@
 
 ### devcontainer統合
 
-- **構成**: `docker-compose.yml`（本番） + `docker-compose.override.yml`（開発オーバーライド）
+- **構成**: `LeadersBoard/docker-compose.yml`（本番） + `.devcontainer/docker-compose.override.yml`（開発オーバーライド）
 - **マルチステージビルド**: `api.Dockerfile`に`dev`/`prod`ステージを定義
 - **devcontainer.json**: 両ファイルを参照し、`api`サービスに接続
 - **API開発**: devcontainer（apiコンテナ）内で直接実行（Cursorデバッガー対応）
 - **Worker開発**: GPUコンテナ内で実行（nvidia-container-runtime必須）
   - デバッグ: ログベース + ユニットテスト（モックアダプタ）
   - Workerのビジネスロジックはドメイン層に分離し、devcontainer内でテスト可能
-- **依存サービス**: Redis, MLflow, Workerはdocker-composeサービスとして起動
+- **依存サービス**: Redis, MLflow, Worker, Streamlitはdocker-composeサービスとして起動
 
 ### docker-compose構成
 
 ```yaml
-# docker-compose.yml（本番用）
+# LeadersBoard/docker-compose.yml（本番用）
 services:
   api:
     build:
@@ -128,20 +128,22 @@ services:
       target: prod  # 本番ステージ
     # ...
 
-# docker-compose.override.yml（開発用オーバーライド）
+# .devcontainer/docker-compose.override.yml（開発用オーバーライド）
 services:
   api:
     build:
       target: dev  # 開発ステージに切り替え
     volumes:
-      - ..:/workspaces/2025:cached  # ソースマウント
+      - ..:/app:cached  # ソースマウント
+    command: sleep infinity  # 手動起動用
 ```
 
 ### 開発フロー
 
 ```bash
-# devcontainer起動時に自動でapi(dev), Redis, MLflow, Workerが起動
+# devcontainer起動時に自動でapi(dev), Redis, MLflow, Worker, Streamlitが起動
 # APIはdevcontainer内で直接実行（デバッガー使用可能）
+cd /app/LeadersBoard
 python -m src.api.main
 
 # Workerログ確認
@@ -154,6 +156,7 @@ pytest tests/unit/ --cov
 pytest tests/integration/
 
 # 本番ビルド確認（override無視）
+cd /app/LeadersBoard
 docker-compose -f docker-compose.yml up --build
 ```
 
@@ -244,5 +247,5 @@ build_mlflow_run_link(mlflow_url, run_id) -> str
 
 ## Maintenance
 
-- updated_at: 2025-12-18
-- reason: Streamlit UI実装追加（提出フォーム、ジョブ監視、ログ表示機能）
+- updated_at: 2025-12-22
+- reason: docker-compose構成の正確な場所を反映（`.devcontainer/docker-compose.override.yml`、workspaceFolder `/app`、Streamlit追加）
