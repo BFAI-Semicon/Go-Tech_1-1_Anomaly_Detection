@@ -126,6 +126,21 @@ API 側で Redis カウンター（`leaderboard:rate:{user_id}`）を参照し�
 - `validate_entrypoint` は `/` や `..` を含むパスを拒否し、`.py` で終わるファイルだけを許可してパスの安全性を確保する。
 - `load_logs(job_id)` は `<LOG_ROOT>/<job_id>.log` を返し、API エンドポイントや CI からジョブログを取り出せるよう整備する。
 
+### ドキュメント構成
+
+**Location**: `LeadersBoard/` + `LeadersBoard/docs/`  
+**Purpose**: プロジェクトドキュメント（セットアップ、API仕様、デプロイ手順）  
+**Pattern**: 
+
+- `README.md`: プロジェクト概要、クイックスタート、使用方法、API概要
+- `docs/api.md`: 詳細API仕様（エンドポイント、認証、レート制限、投稿者コード規約）
+- `docs/deployment.md`: デプロイ手順（ローカル/本番、シングル/マルチノード、バックアップ、モニタリング）
+
+**Documentation Principle**:
+- README.md: 5分で理解できる概要とクイックスタート
+- docs/api.md: API利用者向けの完全なリファレンス
+- docs/deployment.md: 運用者向けの実践的な手順書
+
 ### Docker構成
 
 **Location**: `LeadersBoard/` + `.devcontainer/`  
@@ -222,4 +237,4 @@ from src.adapters.filesystem_storage_adapter import FileSystemStorageAdapter
 ## Maintenance
 
 - updated_at: 2025-12-22
-- reason: Streamlit UI自動更新パターン追加（Fragment自動更新、ステータス色分け、実行中ジョブ検出）
+- reason: ドキュメント構成パターン追加（README.md拡充、API仕様、デプロイ手順の文書化完了）

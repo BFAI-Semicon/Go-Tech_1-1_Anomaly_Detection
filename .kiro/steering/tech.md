@@ -253,7 +253,28 @@ render_jobs_with_auto_refresh = st.fragment(run_every="5s")(_render_jobs)
 - ユニットテスト: `tests/unit/test_streamlit_app.py`（モックリクエスト使用）
 - Streamlit未インストール環境でもテスト可能（オプショナルインポート）
 
+## Documentation Standards
+
+### README.md Structure
+
+- **Overview**: 5分で理解できるプロジェクト説明とアーキテクチャ特徴
+- **Quick Start**: 開発環境・本番環境の最速起動手順
+- **Usage**: Web UI + API経由の具体的な使用例
+- **Troubleshooting**: よくある問題と解決方法
+
+### API Documentation (docs/api.md)
+
+- **Complete Reference**: 全エンドポイントの詳細仕様（リクエスト/レスポンス例含む）
+- **Code Contract**: 投稿者のコード規約（metrics.json フォーマット）
+- **OpenAPI Integration**: FastAPI自動生成仕様へのリンク（/docs, /redoc）
+
+### Deployment Documentation (docs/deployment.md)
+
+- **Multi-Architecture**: シングルノード（開発）+ マルチノード（本番）構成
+- **Operations**: バックアップ、モニタリング、トラブルシューティング
+- **Security**: 本番環境チェックリスト
+
 ## Maintenance
 
 - updated_at: 2025-12-22
-- reason: Streamlit UI自動更新機能追加（Fragment自動更新パターン、ステータス色分け、実行中ジョブ検出）
+- reason: ドキュメント標準追加（README.md、API仕様、デプロイ手順の完備）
