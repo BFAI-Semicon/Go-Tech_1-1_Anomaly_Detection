@@ -24,7 +24,18 @@ LeadersBoard は、機械学習モデルの性能を公平に比較するため�
 - **投稿ファイル**:
   - `main.py`: モデルの学習・評価を実行するPythonスクリプト
   - `config.yaml`: モデルの設定ファイル
+  - `dataset.zip`: データセットファイル（zipファイルとして含める）
   - その他必要なファイル（オプション）
+
+#### データセットについて
+
+- データセットは**zipファイル**として投稿に含める必要があります
+- 例: `pcb1.zip` をアップロードすると、`main.py` 実行時に自動展開されます
+- `config.yaml` の `root` パラメータは展開後のパスを指定します
+  ```yaml
+  # 例: pcb1.zip → pcb1/Data/Images/
+  root: pcb1/Data/Images
+  ```
 
 ## 投稿の流れ
 
@@ -142,9 +153,16 @@ data:
   class_path: anomalib.data.Folder
   init_args:
     name: pcb1
-    root: pcb1/Data/Images
+    root: pcb1/Data/Images  # zipファイル展開後のパス
     normal_dir: Normal
     abnormal_dir: Anomaly
+    extensions:  # オプション: 省略時はデフォルト画像形式を使用
+      - .jpg
+      - .jpeg
+      - .JPG  # 大文字拡張子も必要な場合は明示
+      - .JPEG
+      - .png
+      - .PNG
     train_batch_size: 32
     eval_batch_size: 32
     num_workers: 0
@@ -165,11 +183,28 @@ metrics:
 import argparse
 import json
 import logging
+import zipfile
 from pathlib import Path
 from omegaconf import OmegaConf
 from anomalib.data import get_datamodule
 from anomalib.models import get_model
 from anomalib.trainers import get_trainer
+
+def extract_dataset_if_needed(config_path: Path):
+    """
+    データセットがzipファイルで提供されている場合に自動展開
+    例: pcb1.zip → pcb1/
+    """
+    base_dir = config_path.parent
+    
+    # 一般的なデータセット名のzipファイルを検索
+    for zip_file in base_dir.glob("*.zip"):
+        dataset_dir = base_dir / zip_file.stem
+        if not dataset_dir.exists():
+            logging.info(f"Extracting {zip_file.name}...")
+            with zipfile.ZipFile(zip_file) as archive:
+                archive.extractall(base_dir)
+            logging.info(f"Extracted to {dataset_dir}")
 
 def main():
     """
@@ -194,6 +229,9 @@ def main():
         ]
     )
     logger = logging.getLogger(__name__)
+    
+    # データセットをzipから展開（必要な場合）
+    extract_dataset_if_needed(args.config)
     
     # 設定ファイルを読み込み
     config = OmegaConf.load(args.config)
@@ -298,8 +336,9 @@ if __name__ == "__main__":
 
 ### Q8: 複数のモデルを同時に投稿できますか？
 
-**A**: 管理者の設定により異なります。デフォルトでは最大2個まで同時実行可能ですが、
-制限値は環境変数で変更できます。現在の制限値については管理者にお問い合わせください。
+**A**: いいえ、同時に実行できるジョブは1つのみです。
+実行中のジョブが完了するまで、新しいジョブを投稿してもキューで待機状態になります。
+ジョブが完了したら、次のジョブが自動的に開始されます。
 
 ### Q9: エラーコードの意味を教えてください
 
