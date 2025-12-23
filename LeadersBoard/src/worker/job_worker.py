@@ -111,6 +111,9 @@ class JobWorker:
             metrics_data = self._load_metrics(output_dir)
             run_id = self._record_metrics(job_id, metrics_data, output_dir)
 
+            # Copy training.log to logs directory for API access
+            self._save_job_log(job_id, output_dir)
+
             logger.info(f"Job {job_id} completed successfully! MLflow run_id: {run_id}")
             self.status.update(job_id, JobStatus.COMPLETED, run_id=run_id)
             return run_id
@@ -172,6 +175,22 @@ class JobWorker:
     def _validate_path(self, entrypoint: str) -> None:
         if entrypoint.startswith("/") or ".." in Path(entrypoint).parts:
             raise ValueError("不正なファイルパスです")
+
+    def _save_job_log(self, job_id: str, output_dir: Path) -> None:
+        """Copy training.log to logs directory for API access."""
+        training_log = output_dir / "training.log"
+        if not training_log.exists():
+            logger.warning(f"training.log not found in {output_dir}")
+            return
+
+        # Get logs_root from storage adapter
+        if hasattr(self.storage, 'logs_root'):
+            logs_root = self.storage.logs_root
+            log_path = logs_root / f"{job_id}.log"
+            log_path.write_text(training_log.read_text())
+            logger.info(f"Job log saved to {log_path}")
+        else:
+            logger.warning("Storage adapter does not have logs_root attribute")
 
     def _load_metrics(self, output_dir: Path) -> dict[str, Any]:
         """Load metrics.json from output directory.

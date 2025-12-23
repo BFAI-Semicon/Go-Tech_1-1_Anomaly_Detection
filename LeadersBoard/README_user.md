@@ -29,24 +29,24 @@ LeadersBoard は、機械学習モデルの性能を公平に比較するため�
 ## 投稿の流れ
 
 ```text
-1. ファイルを準備
+1. ファイルを準備（main.py, config.yaml）
    ↓
-2. Web UI または API から投稿
+2. Web UI から投稿
    ↓
 3. ジョブが自動実行（GPU環境）
    ↓
-4. 結果を MLflow UI で確認
+4. metrics.json が生成され、MLflow に自動記録
    ↓
-5. リーダーボードでランキング確認
+5. MLflow UI で結果を確認
+   ↓
+6. リーダーボードでランキング確認
 ```
 
 ## 投稿方法
 
-### 方法1: Web UI から投稿（推奨）
+### Web UI から投稿
 
-最も簡単な方法です。
-
-1. ブラウザで `http://localhost:8501` にアクセス
+1. ブラウザで `http://<hostname>:8501` にアクセス
 2. **API Token** を入力（管理者から受け取ったトークン）
 3. **ファイルをアップロード**:
    - `main.py`: エントリポイント
@@ -66,53 +66,18 @@ LeadersBoard は、機械学習モデルの性能を公平に比較するため�
 7. **Submit** ボタンをクリック
 8. ジョブ一覧で進捗を確認（5秒ごとに自動更新）
 
-#### ステータスの見方
+### ステータスの見方
 
 - ⏳ **pending**: ジョブが待機中
 - ⏳ **running**: ジョブが実行中
 - ✅ **completed**: ジョブが正常に完了
 - ❌ **failed**: ジョブが失敗（ログを確認してください）
 
-### 方法2: API から投稿
-
-コマンドラインやスクリプトから投稿する場合。
-
-```bash
-# 1. 提出を作成
-curl -X POST http://localhost:8010/submissions \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -F "files=@main.py" \
-  -F "files=@config.yaml" \
-  -F "entrypoint=main.py" \
-  -F "config_file=config.yaml" \
-  -F 'metadata={"method":"padim","description":"My model"}'
-
-# レスポンス例
-# {"submission_id": "abc123"}
-
-# 2. ジョブを投入
-curl -X POST http://localhost:8010/jobs \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"submission_id":"abc123","config":{"resource_class":"medium"}}'
-
-# レスポンス例
-# {"job_id": "xyz789", "status": "pending"}
-
-# 3. ステータスを確認
-curl http://localhost:8010/jobs/xyz789/status \
-  -H "Authorization: Bearer YOUR_TOKEN"
-
-# 4. ログを確認
-curl http://localhost:8010/jobs/xyz789/logs \
-  -H "Authorization: Bearer YOUR_TOKEN"
-```
-
 ## 結果の確認
 
 ### MLflow UI でメトリクスを確認
 
-1. ブラウザで `http://localhost:5010` にアクセス
+1. ブラウザで `http://<hostname>:5010` にアクセス
 2. 実験一覧から自分の実験を選択
 3. メトリクス（AUROC、F1スコアなど）を確認
 4. アーティファクト（画像、モデルファイルなど）をダウンロード
@@ -129,17 +94,18 @@ curl http://localhost:8010/jobs/xyz789/logs \
 
 投稿には以下の制限があります：
 
-- **1時間あたりの投稿数**: 最大10回
-- **同時実行ジョブ数**: 最大3個
+- **1時間あたりの投稿数**: 最大50回（デフォルト）
+- **同時実行ジョブ数**: 最大2個（デフォルト）
 
-制限を超えると、エラーメッセージが表示されます。
+※ 実際の制限値は管理者の設定により異なる場合があります。制限を超えると、エラーメッセージが表示されます。
 
 ### ファイル要件
 
 #### `main.py` の要件
 
-- **必須関数**: `train()` または `main()` 関数を実装
-- **MLflow連携**: `mlflow.log_metric()` でメトリクスを記録
+- **必須関数**: `main()` 関数を実装
+- **出力ファイル**: `--output` で指定されたディレクトリに `metrics.json` を生成
+- **metrics.json 形式**: `params` と `metrics` を含むJSON形式
 - **エラーハンドリング**: 例外が発生した場合は適切にログ出力
 
 #### `config.yaml` の要件
@@ -154,46 +120,12 @@ curl http://localhost:8010/jobs/xyz789/logs \
 
 - **AUROC** (Area Under ROC Curve): 異常検知性能の主要指標
 - **F1スコア**: 精度と再現率のバランス
-- **実行時間**: 学習・評価にかかった時間
-- **その他**: カスタムメトリクス（オプション）
+- **実行時間**: 学習・評価にかかった時間（MLflowが自動記録）
+- **その他**: `metrics.json` に含めたカスタムメトリクス（オプション）
 
 ## サンプルコード
 
-### 最小構成の `main.py`
-
-```python
-import mlflow
-from anomalib.engine import Engine
-
-def main():
-    """
-    モデルの学習と評価を実行する関数
-    """
-    # MLflow実験を開始
-    mlflow.set_experiment("my-experiment")
-    
-    with mlflow.start_run():
-        # 設定ファイルを読み込み
-        engine = Engine.from_config("config.yaml")
-        
-        # 学習
-        engine.train()
-        
-        # 評価
-        results = engine.test()
-        
-        # メトリクスを記録
-        mlflow.log_metric("auroc", results["auroc"])
-        mlflow.log_metric("f1_score", results["f1_score"])
-        
-        print(f"AUROC: {results['auroc']:.4f}")
-        print(f"F1 Score: {results['f1_score']:.4f}")
-
-if __name__ == "__main__":
-    main()
-```
-
-### 最小構成の `config.yaml`
+### `config.yaml`
 
 ```yaml
 model:
@@ -227,71 +159,97 @@ metrics:
   - f1_score
 ```
 
-### より詳細な `main.py` の例
+### `main.py` の例
 
 ```python
-import mlflow
+import argparse
+import json
 import logging
 from pathlib import Path
-from anomalib.engine import Engine
-
-# ログ設定
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+from omegaconf import OmegaConf
+from anomalib.data import get_datamodule
+from anomalib.models import get_model
+from anomalib.trainers import get_trainer
 
 def main():
     """
-    カスタムメトリクスとアーティファクトを含む投稿例
+    カスタムメトリクスとパラメータを含む投稿例
     """
-    # 実験名とタグを設定
-    mlflow.set_experiment("my-advanced-experiment")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--config", type=Path, required=True)
+    parser.add_argument("--output", type=Path, required=True)
+    args = parser.parse_args()
     
-    with mlflow.start_run():
-        # タグを追加
-        mlflow.set_tag("model", "padim")
-        mlflow.set_tag("backbone", "resnet18")
+    # 出力ディレクトリを作成
+    args.output.mkdir(parents=True, exist_ok=True)
+    
+    # ログファイルを設定
+    log_file = args.output / "training.log"
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(levelname)s: %(message)s",
+        handlers=[
+            logging.FileHandler(log_file),
+            logging.StreamHandler()
+        ]
+    )
+    logger = logging.getLogger(__name__)
+    
+    # 設定ファイルを読み込み
+    config = OmegaConf.load(args.config)
+    config.trainer.default_root_dir = str(args.output)
+    
+    try:
+        # データモジュール、モデル、トレーナーを取得
+        logger.info("Loading datamodule, model, and trainer")
+        datamodule = get_datamodule(config.data)
+        model = get_model(config.model)
+        trainer = get_trainer(config)
         
-        # パラメータを記録
-        mlflow.log_param("max_epochs", 10)
-        mlflow.log_param("batch_size", 32)
+        # 学習
+        logger.info("Starting training...")
+        trainer.fit(model=model, datamodule=datamodule)
         
-        try:
-            # エンジンを初期化
-            logger.info("Initializing engine...")
-            engine = Engine.from_config("config.yaml")
-            
-            # 学習
-            logger.info("Starting training...")
-            engine.train()
-            
-            # 評価
-            logger.info("Starting evaluation...")
-            results = engine.test()
-            
-            # メトリクスを記録
-            mlflow.log_metric("auroc", results["auroc"])
-            mlflow.log_metric("f1_score", results["f1_score"])
-            
-            # カスタムメトリクス（オプション）
-            if "precision" in results:
-                mlflow.log_metric("precision", results["precision"])
-            if "recall" in results:
-                mlflow.log_metric("recall", results["recall"])
-            
-            # アーティファクトを記録（オプション）
-            # 例: 可視化画像、混同行列など
-            output_dir = Path("outputs")
-            if output_dir.exists():
-                mlflow.log_artifacts(str(output_dir))
-            
-            logger.info(f"Training completed successfully!")
-            logger.info(f"AUROC: {results['auroc']:.4f}")
-            logger.info(f"F1 Score: {results['f1_score']:.4f}")
-            
-        except Exception as e:
-            logger.error(f"Training failed: {e}")
-            mlflow.log_param("status", "failed")
-            raise
+        # 評価
+        logger.info("Starting evaluation...")
+        test_results = trainer.test(model=model, datamodule=datamodule)
+        
+        # メトリクスを抽出
+        metrics = {}
+        if test_results and len(test_results) > 0:
+            for key, value in test_results[0].items():
+                if isinstance(value, (int, float)):
+                    metrics[key] = float(value)
+                elif hasattr(value, 'item'):
+                    try:
+                        metrics[key] = float(value.item())
+                    except (ValueError, TypeError):
+                        pass
+        
+        # metrics.json を生成
+        metrics_data = {
+            "params": {
+                "method": config.model.class_path.split(".")[-1].lower(),
+                "backbone": str(config.model.init_args.get("backbone", "resnet18")),
+                "dataset": config.data.init_args.get("name", "unknown"),
+                "image_size": str(config.data.init_args.get("image_size", "default")),
+                "max_epochs": str(config.trainer.get("max_epochs", 10))
+            },
+            "metrics": metrics
+        }
+        
+        metrics_path = args.output / "metrics.json"
+        with open(metrics_path, "w") as f:
+            json.dump(metrics_data, f, indent=2)
+        
+        logger.info(f"Training completed successfully!")
+        logger.info(f"Metrics saved to {metrics_path}")
+        logger.info(f"Training log saved to {log_file}")
+        logger.info(f"Results: {metrics}")
+        
+    except Exception as e:
+        logger.error(f"Training failed: {e}")
+        raise
 
 if __name__ == "__main__":
     main()
@@ -340,7 +298,8 @@ if __name__ == "__main__":
 
 ### Q8: 複数のモデルを同時に投稿できますか？
 
-**A**: はい、レート制限の範囲内であれば可能です。ただし、同時実行ジョブ数は最大3個までです。
+**A**: 管理者の設定により異なります。デフォルトでは最大2個まで同時実行可能ですが、
+制限値は環境変数で変更できます。現在の制限値については管理者にお問い合わせください。
 
 ### Q9: エラーコードの意味を教えてください
 
@@ -357,10 +316,13 @@ if __name__ == "__main__":
 
 ```bash
 # 必要なライブラリをインストール
-pip install anomalib mlflow
+pip install anomalib omegaconf
 
-# ローカルで実行
-python main.py
+# ローカルで実行（引数を指定）
+python main.py --config config.yaml --output ./output
+
+# metrics.json が生成されることを確認
+cat ./output/metrics.json
 ```
 
 ## サポート

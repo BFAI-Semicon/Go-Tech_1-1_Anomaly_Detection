@@ -185,7 +185,6 @@ def run_training(config: DictConfig, output_dir: Path) -> None:
 
 
 def main() -> None:
-    logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
     parser = argparse.ArgumentParser(description="Anomalib Padim demo runner.")
     parser.add_argument(
         "--config",
@@ -201,9 +200,24 @@ def main() -> None:
     )
     args = parser.parse_args()
 
+    # ログファイルを設定
+    log_file = args.output / "training.log"
+    args.output.mkdir(parents=True, exist_ok=True)
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(levelname)s: %(message)s",
+        handlers=[
+            logging.FileHandler(log_file),
+            logging.StreamHandler()
+        ]
+    )
+
     config = OmegaConf.load(args.config)
     resolve_paths(args.config, args.output, config)
     run_training(config, args.output)
+
+    LOGGER.info(f"Training log saved to {log_file}")
 
 
 if __name__ == "__main__":

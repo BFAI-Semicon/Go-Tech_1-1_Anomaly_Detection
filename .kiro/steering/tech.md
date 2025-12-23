@@ -53,7 +53,7 @@
 
 - **Purpose**: API がジョブ投入前にユーザーごとの提出処理数と実行中ジョブ数を確認し、公平性を維持する。
 - **Domain Policy**: `EnqueueJob` は `MAX_SUBMISSIONS_PER_HOUR = 10` と  
-  `MAX_CONCURRENT_RUNNING = 3` を順番に検証する。  
+  `MAX_CONCURRENT_RUNNING = 1` を順番に検証する。  
   `JobStatusPort` のあと `RateLimitPort` を呼び出し、違反時は `ValueError` で拒否する。
 - **Implementation**: `RedisRateLimitAdapter` は `leaderboard:rate:` プレフィックスの Redis カウンターを使う。  
   `INCR` + `EXPIRE`（TTL 3600 秒）で提出数を管理し、`increment_submission`/`get_submission_count` を提供する。  

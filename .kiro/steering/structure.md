@@ -59,7 +59,8 @@ API 側で Redis カウンター（`leaderboard:rate:{user_id}`）を参照し�
 - リストが空でもヘッダー自体は required なので、環境変数を変えるだけで公開/非公開を切り替えられる。
 - `/submissions` は `metadata` フィールドを JSON としてパースし、`entrypoint`/`config_file` などを含んだ辞書とマージして保存。
 - アップロードされたファイルは `NamedBinaryIO` でラップし、ファイル名を保持しつつ `StoragePort` を介して保存される。
-- `GET /jobs/{job_id}/logs` は `StoragePort.load_logs(job_id)` を呼び出し、ワーカーが `<LOG_ROOT>/<job_id>.log` として書き出したログを返すことでデバッグ可能にしている。
+- `GET /jobs/{job_id}/logs` は `StoragePort.load_logs(job_id)` を呼び出し、  
+  ワーカーが `<LOG_ROOT>/<job_id>.log` として書き出したログを返すことでデバッグ可能にしている。
 
 ### Worker層
 
@@ -83,6 +84,7 @@ API 側で Redis カウンター（`leaderboard:rate:{user_id}`）を参照し�
 - `get_status_color()`: ステータス色分け（✅❌⏳❓）
 
 **Auto-refresh Pattern**:
+
 - `@st.fragment(run_every="5s")` で `_render_jobs()` を装飾（main関数内で動的適用）
 - 実行中（pending/running）ジョブがある場合のみ自動更新メッセージを表示
 - 提出フォームの入力状態は保持される（Fragmentスコープ分離）
@@ -130,13 +132,14 @@ API 側で Redis カウンター（`leaderboard:rate:{user_id}`）を参照し�
 
 **Location**: `LeadersBoard/` + `LeadersBoard/docs/`  
 **Purpose**: プロジェクトドキュメント（セットアップ、API仕様、デプロイ手順）  
-**Pattern**: 
+**Pattern**:
 
 - `README.md`: プロジェクト概要、クイックスタート、使用方法、API概要
 - `docs/api.md`: 詳細API仕様（エンドポイント、認証、レート制限、投稿者コード規約）
 - `docs/deployment.md`: デプロイ手順（ローカル/本番、シングル/マルチノード、バックアップ、モニタリング）
 
 **Documentation Principle**:
+
 - README.md: 5分で理解できる概要とクイックスタート
 - docs/api.md: API利用者向けの完全なリファレンス
 - docs/deployment.md: 運用者向けの実践的な手順書
@@ -216,7 +219,8 @@ from src.adapters.filesystem_storage_adapter import FileSystemStorageAdapter
 - **ドメイン**: ビジネスロジック（外部実装に非依存）
 - **ポート**: 抽象インタフェース（実装詳細を隠蔽）
 - **アダプタ**: 具体実装（差し替え可能）
-- **EnqueueJob**: `RateLimitPort` で `MAX_SUBMISSIONS_PER_HOUR` と `MAX_CONCURRENT_RUNNING` を順番に検証し、  
+- **EnqueueJob**: `RateLimitPort` で `MAX_SUBMISSIONS_PER_HOUR = 10` と  
+  `MAX_CONCURRENT_RUNNING = 1` を順番に検証し、  
   Redis カウンターが示す提出数を超えないときだけ `JobQueuePort` と `JobStatusPort` に渡す。  
   ドメインでレート制限ロジックを分離することで API/Worker はリミッタの内部実装に依存しない。
 

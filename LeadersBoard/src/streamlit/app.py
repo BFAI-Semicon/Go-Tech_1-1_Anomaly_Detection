@@ -169,7 +169,13 @@ def _render_jobs(api_url: str, mlflow_url: str) -> None:
         st.info("まだジョブがありません。フォームから投稿してください。")
         return
 
-    # 実行中ジョブの検出用
+    # 実行中ジョブの検出用（最初にセッションステートから判定）
+    has_pending_or_running = any(
+        job.get("status") in ("pending", "running") for job in jobs
+    )
+
+    # 実行中ジョブがない場合は、APIリクエストをスキップしてキャッシュデータのみ使用
+    fetch_status = has_pending_or_running
     running_jobs_detected = False
 
     for job in list(jobs):
@@ -181,7 +187,8 @@ def _render_jobs(api_url: str, mlflow_url: str) -> None:
             st.caption(f"Submission: {submission_id}")
         with col2:
             status_data = None
-            if token and job_id:
+            # 実行中ジョブがある場合のみAPIからステータスを取得（パフォーマンス最適化）
+            if fetch_status and token and job_id:
                 try:
                     status_data = fetch_job_status(api_url, token, job_id)
                 except Exception:  # pragma: no cover
@@ -200,21 +207,37 @@ def _render_jobs(api_url: str, mlflow_url: str) -> None:
                 link = build_mlflow_run_link(mlflow_url, status_data["run_id"])
                 st.markdown(f"[MLflow run]({link})")
         with col3:
-            if st.button("Show logs", key=f"logs-{job_id or 'unknown'}"):
-                if not token:
-                    st.warning("API Tokenが必要です")
-                elif not job_id:
-                    st.warning("Job ID がありません")
-                else:
-                    try:
-                        logs = fetch_job_logs(api_url, token, job_id)
-                        st.code(logs, language="bash")
-                    except Exception as exc:  # pragma: no cover
-                        st.error(f"ログ取得に失敗しました: {exc}")
+            # 実行中またはpendingの場合は状態を表示
+            if status_text in ("pending", "running"):
+                st.caption(f"⏳ {status_text}...")
+            elif status_text in ("completed", "failed"):
+                # ジョブが終了している場合、expanderでログを表示（自動更新で閉じない）
+                with st.expander("📋 View Logs", expanded=False):
+                    if not token:
+                        st.warning("API Tokenが必要です")
+                    elif not job_id:
+                        st.warning("Job ID がありません")
+                    else:
+                        try:
+                            logs = fetch_job_logs(api_url, token, job_id)
+                            st.text_area(
+                                "Job Logs",
+                                logs,
+                                height=400,
+                                key=f"logs-content-{job_id}",
+                                label_visibility="collapsed"
+                            )
+                        except Exception as exc:  # pragma: no cover
+                            st.error(f"ログ取得に失敗しました: {exc}")
+            else:
+                st.caption(f"Status: {status_text}")
 
     # 自動更新の状態表示
     if running_jobs_detected:
         st.caption("⏳ 実行中のジョブがあります。5秒ごとに自動更新されます。")
+    elif jobs:
+        # 全ジョブが終了している場合
+        st.caption("✅ 全てのジョブが終了しました。新しいジョブを投稿すると自動更新が再開されます。")
 
 
 def main() -> None:  # pragma: no cover - UI起動時に実行
@@ -228,7 +251,7 @@ def main() -> None:  # pragma: no cover - UI起動時に実行
     _render_submission_form(api_url, mlflow_url)
     st.divider()
 
-    # Fragment自動更新を適用
+    # Fragment自動更新を適用（ただし実行中ジョブがない場合はAPIリクエストをスキップ）
     render_jobs_with_auto_refresh = st.fragment(run_every="5s")(_render_jobs)
     render_jobs_with_auto_refresh(api_url, mlflow_url)
 

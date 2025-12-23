@@ -28,6 +28,7 @@ CUDA
 CutPaste
 CVPR
 Dalle
+datamodule
 davidanson
 Davide
 debugpy
@@ -40,6 +41,7 @@ dotenv
 DRAEM
 eamodio
 EfficientAD
+elif
 Elsevier
 esbenp
 etal
@@ -53,6 +55,7 @@ gfortran
 Gian
 GLASS
 Go-Tech
+hasattr
 HGETALL
 HSET
 httpx
@@ -61,8 +64,10 @@ hypersphere
 ICCV
 inpainting
 ipython
+isinstance
 isort
 kiro
+kornia
 kwargs
 levelname
 Lflow
@@ -94,6 +99,7 @@ Neur
 noninteractive
 NOPASSWD
 nvcr
+omegaconf
 Omniboard
 ONNX
 opencv
@@ -137,6 +143,7 @@ Susto
 takumii
 TensorRT
 testpaths
+timm
 tmpfs
 toolsai
 torchvision

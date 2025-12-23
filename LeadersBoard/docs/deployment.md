@@ -56,6 +56,10 @@ MLFLOW_TRACKING_URI=http://mlflow:5010
 UPLOAD_ROOT=/shared/submissions
 LOG_ROOT=/shared/logs
 ARTIFACT_ROOT=/shared/artifacts
+
+# レート制限設定
+MAX_SUBMISSIONS_PER_HOUR=50  # 1時間あたりの最大投稿数
+MAX_CONCURRENT_RUNNING=2     # 同時実行ジョブ数
 ```
 
 ### 3. サービスの起動

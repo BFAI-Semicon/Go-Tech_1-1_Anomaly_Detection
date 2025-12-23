@@ -5,6 +5,7 @@ from typing import Any
 
 import pytest
 
+from src.config import get_max_concurrent_running, get_max_submissions_per_hour
 from src.domain.enqueue_job import EnqueueJob
 from src.ports.job_queue_port import JobQueuePort
 from src.ports.job_status_port import JobStatusPort
@@ -108,7 +109,7 @@ def test_rate_limit_exceeded() -> None:
     storage = DummyStorage()
     queue = DummyQueue()
     status = DummyStatus()
-    limiter = DummyRateLimit(next_value=11)
+    limiter = DummyRateLimit(next_value=get_max_submissions_per_hour() + 1)
 
     use_case = EnqueueJob(storage, queue, status, limiter)
     with pytest.raises(ValueError):
@@ -118,7 +119,7 @@ def test_rate_limit_exceeded() -> None:
 def test_concurrency_limit_exceeded() -> None:
     storage = DummyStorage()
     queue = DummyQueue()
-    status = DummyStatus(running=3)
+    status = DummyStatus(running=get_max_concurrent_running())
     limiter = DummyRateLimit()
 
     use_case = EnqueueJob(storage, queue, status, limiter)

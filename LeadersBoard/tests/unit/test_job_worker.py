@@ -18,6 +18,7 @@ from src.worker.job_worker import JobWorker
 class DummyStorage(StoragePort):
     def __init__(self, path: Path) -> None:
         self.path = path
+        self.logs_root: Path | None = None
 
     def save(self, submission_id: str, files, metadata):  # type: ignore[override]
         raise NotImplementedError
@@ -290,6 +291,47 @@ def test_execute_job_loads_metrics_and_logs_to_mlflow(
     assert ("log_metrics", {"auc": 0.95}) in tracking.calls
     assert ("log_artifact", str(output_dir)) in tracking.calls
     assert ("end_run", None) in tracking.calls
+
+
+def test_execute_job_saves_training_log(
+    monkeypatch: Any, worker: JobWorker, status: DummyStatus, storage: DummyStorage, tracking: DummyTracking, tmp_path: Path
+) -> None:
+    """Test that training.log is copied to logs directory."""
+    job = {
+        "job_id": "job-with-log",
+        "submission_id": "sub-1",
+        "entrypoint": "main.py",
+        "config_file": "config.yaml",
+    }
+
+    # Create metrics.json and training.log
+    output_dir = worker.artifacts_root / job["job_id"]
+    output_dir.mkdir(parents=True, exist_ok=True)
+    metrics_file = output_dir / "metrics.json"
+    metrics_file.write_text('{"params": {"method": "padim"}, "metrics": {"auc": 0.95}}')
+    training_log = output_dir / "training.log"
+    training_log.write_text("INFO: Training started\nINFO: Training completed")
+
+    # Setup storage with logs_root
+    logs_root = tmp_path / "logs"
+    logs_root.mkdir(parents=True, exist_ok=True)
+    storage.logs_root = logs_root
+
+    result = MagicMock()
+    result.stdout = b""
+    monkeypatch.setattr("src.worker.job_worker.subprocess.run", MagicMock(return_value=result))
+
+    worker.storage = storage
+    worker.status = status
+    worker.tracking = tracking
+    worker.queue = MagicMock()
+
+    worker.execute_job(job)
+
+    # Verify log was copied
+    log_path = logs_root / f"{job['job_id']}.log"
+    assert log_path.exists()
+    assert log_path.read_text() == "INFO: Training started\nINFO: Training completed"
 
 
 def test_execute_job_mlflow_failure_updates_status(
