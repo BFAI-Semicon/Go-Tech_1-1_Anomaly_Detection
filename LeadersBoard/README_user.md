@@ -374,4 +374,4 @@ python main.py
 
 ---
 
-**Happy Submitting! 🚀**
+Happy Submitting! 🚀
