@@ -134,13 +134,15 @@ API 側で Redis カウンター（`leaderboard:rate:{user_id}`）を参照し�
 **Purpose**: プロジェクトドキュメント（セットアップ、API仕様、デプロイ手順）  
 **Pattern**:
 
-- `README.md`: プロジェクト概要、クイックスタート、使用方法、API概要
+- `README.md`: プロジェクト概要、クイックスタート、使用方法、API概要（開発者・運用者向け）
+- `README_user.md`: 投稿者向けガイド（API Token、投稿方法、結果確認、サンプルコード、FAQ）
 - `docs/api.md`: 詳細API仕様（エンドポイント、認証、レート制限、投稿者コード規約）
 - `docs/deployment.md`: デプロイ手順（ローカル/本番、シングル/マルチノード、バックアップ、モニタリング）
 
 **Documentation Principle**:
 
-- README.md: 5分で理解できる概要とクイックスタート
+- README.md: 5分で理解できる概要とクイックスタート（技術者向け）
+- README_user.md: プラットフォーム利用者向けの完全ガイド（非技術者でも理解できる）
 - docs/api.md: API利用者向けの完全なリファレンス
 - docs/deployment.md: 運用者向けの実践的な手順書
 
@@ -240,5 +242,5 @@ from src.adapters.filesystem_storage_adapter import FileSystemStorageAdapter
 
 ## Maintenance
 
-- updated_at: 2025-12-22
-- reason: ドキュメント構成パターン追加（README.md拡充、API仕様、デプロイ手順の文書化完了）
+- updated_at: 2025-12-26
+- reason: 投稿者向けドキュメント追加（README_user.md - プラットフォーム利用者向けガイド）
