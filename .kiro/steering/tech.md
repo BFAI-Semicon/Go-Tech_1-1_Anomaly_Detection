@@ -66,9 +66,16 @@
 - Python 3.13 型ヒント必須（`mypy` strict mode推奨）
 - Pydanticモデルで入力・出力の型安全性を担保
 
+### Configuration Management
+
+- **Centralized Config**: `src/config.py`で環境変数アクセスを関数化
+- **Default Values**: 関数内でデフォルト値を設定（例: `MAX_SUBMISSIONS_PER_HOUR = 50`）
+- **Environment Override**: 環境変数で設定値の上書きをサポート
+
 ### Code Quality
 
 - **Linter**: `ruff` または `flake8` + `black`
+- **Spell Checker**: `cspell`（プロジェクト用語辞書対応）
 - **Formatter**: `black`
 - **Import Order**: `isort`
 
@@ -277,4 +284,4 @@ render_jobs_with_auto_refresh = st.fragment(run_every="5s")(_render_jobs)
 ## Maintenance
 
 - updated_at: 2026-01-13
-- reason: レート制限デフォルト値・テストカバレッジ・テスト数の更新
+- reason: スペルチェッカー・設定管理パターン・テストカバレッジ同期の追加

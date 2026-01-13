@@ -23,11 +23,17 @@ Clean-lite設計（ドメイン/ポート/アダプタ）を採用し、ドメ�
 - `JobStatusPort`: 状態の保存/参照
 - `TrackingPort`: メトリクス記録・`run_id` 生成（Workerのみ使用）
 
+### 設定管理層
+
+**Location**: `/src/config.py`  
+**Purpose**: 環境変数ベースの設定値を関数で一元管理する。  
+レート制限や同時実行制限などの設定値を環境変数から取得し、デフォルト値を関数内で定義する。
+
 ### レート制限層
 
 **Location**: `/src/ports/rate_limit_port.py` + `/src/adapters/redis_rate_limit_adapter.py`  
 **Purpose**: ユーザーごとの提出頻度を制御する。  
-API 側で Redis カウンター（`leaderboard:rate:{user_id}`）を参照し、3600 秒の時間ウィンドウ内で 10 回を超える提出を拒否する。
+API 側で Redis カウンター（`leaderboard:rate:{user_id}`）を参照し、3600 秒の時間ウィンドウ内で 50 回を超える提出を拒否する。
 **Pattern**:
 
 - `RateLimitPort.increment_submission` は `RedisRateLimitAdapter` を使って `INCR` + `EXPIRE` で値を更新する。  
@@ -130,14 +136,15 @@ API 側で Redis カウンター（`leaderboard:rate:{user_id}`）を参照し�
 
 ### ドキュメント構成
 
-**Location**: `LeadersBoard/` + `LeadersBoard/docs/`  
-**Purpose**: プロジェクトドキュメント（セットアップ、API仕様、デプロイ手順）  
+**Location**: `LeadersBoard/` + `LeadersBoard/docs/` + `docs/`  
+**Purpose**: プロジェクトドキュメント（セットアップ、API仕様、デプロイ手順、調査資料）  
 **Pattern**:
 
 - `README.md`: プロジェクト概要、クイックスタート、使用方法、API概要（開発者・運用者向け）
 - `README_user.md`: 投稿者向けガイド（API Token、投稿方法、結果確認、サンプルコード、FAQ）
 - `docs/api.md`: 詳細API仕様（エンドポイント、認証、レート制限、投稿者コード規約）
 - `docs/deployment.md`: デプロイ手順（ローカル/本番、シングル/マルチノード、バックアップ、モニタリング）
+- `docs/Survey/`: 関連論文調査・分析資料（異常検知分野の最新研究動向）
 
 **Documentation Principle**:
 
@@ -243,4 +250,4 @@ from src.adapters.filesystem_storage_adapter import FileSystemStorageAdapter
 ## Maintenance
 
 - updated_at: 2026-01-13
-- reason: レート制限デフォルト値・テストカバレッジ・テスト数の更新
+- reason: 設定管理パターン・ドキュメント構造・テストカバレッジ同期の追加
