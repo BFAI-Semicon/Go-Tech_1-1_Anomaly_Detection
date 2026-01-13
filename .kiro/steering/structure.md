@@ -221,8 +221,8 @@ from src.adapters.filesystem_storage_adapter import FileSystemStorageAdapter
 - **ドメイン**: ビジネスロジック（外部実装に非依存）
 - **ポート**: 抽象インタフェース（実装詳細を隠蔽）
 - **アダプタ**: 具体実装（差し替え可能）
-- **EnqueueJob**: `RateLimitPort` で `MAX_SUBMISSIONS_PER_HOUR = 10` と  
-  `MAX_CONCURRENT_RUNNING = 1` を順番に検証し、  
+- **EnqueueJob**: `RateLimitPort` で `MAX_SUBMISSIONS_PER_HOUR = 50` と
+  `MAX_CONCURRENT_RUNNING = 2` を順番に検証し、  
   Redis カウンターが示す提出数を超えないときだけ `JobQueuePort` と `JobStatusPort` に渡す。  
   ドメインでレート制限ロジックを分離することで API/Worker はリミッタの内部実装に依存しない。
 
@@ -237,10 +237,10 @@ from src.adapters.filesystem_storage_adapter import FileSystemStorageAdapter
   - **Coverage**: エンドツーエンドフロー、metrics.json読み取り、セキュリティ（パストラバーサル）、エラーハンドリング（OOM、タイムアウト、metrics.json不在/不正）
   - **Count**: 10件
 - **境界テスト**: ファイルサイズ上限、タイムアウト、重複投入、OOM等
-- **Overall Coverage**: 90.8%（目標80%達成）
-- **Total Tests**: 65件
+- **Overall Coverage**: 91%（目標80%達成）
+- **Total Tests**: 66件
 
 ## Maintenance
 
-- updated_at: 2025-12-26
-- reason: 投稿者向けドキュメント追加（README_user.md - プラットフォーム利用者向けガイド）
+- updated_at: 2026-01-13
+- reason: レート制限デフォルト値・テストカバレッジ・テスト数の更新

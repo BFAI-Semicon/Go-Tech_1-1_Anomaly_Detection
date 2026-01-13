@@ -52,8 +52,8 @@
 ## Rate Limiting
 
 - **Purpose**: API がジョブ投入前にユーザーごとの提出処理数と実行中ジョブ数を確認し、公平性を維持する。
-- **Domain Policy**: `EnqueueJob` は `MAX_SUBMISSIONS_PER_HOUR = 10` と  
-  `MAX_CONCURRENT_RUNNING = 1` を順番に検証する。  
+- **Domain Policy**: `EnqueueJob` は `MAX_SUBMISSIONS_PER_HOUR = 50` と
+  `MAX_CONCURRENT_RUNNING = 2` を順番に検証する。
   `JobStatusPort` のあと `RateLimitPort` を呼び出し、違反時は `ValueError` で拒否する。
 - **Implementation**: `RedisRateLimitAdapter` は `leaderboard:rate:` プレフィックスの Redis カウンターを使う。  
   `INCR` + `EXPIRE`（TTL 3600 秒）で提出数を管理し、`increment_submission`/`get_submission_count` を提供する。  
@@ -82,8 +82,8 @@
 
 - **Framework**: `pytest`
 - **Coverage**: 80%以上推奨（ドメインロジック・ポート実装は必須）
-  - **現在の達成状況**: 90.8%（目標達成）
-  - **テスト数**: 65件（ユニット55件 + 統合10件）
+  - **現在の達成状況**: 91%（目標達成）
+  - **テスト数**: 66件（ユニット56件 + 統合10件）
 - **Integration Test**: docker-compose環境でエンドツーエンドテスト
 - **Test Organization**:
   - `/tests/unit/` - モックアダプタを使用した高速テスト（ドメイン・アダプタ・API・Worker・Streamlit UI）
@@ -276,5 +276,5 @@ render_jobs_with_auto_refresh = st.fragment(run_every="5s")(_render_jobs)
 
 ## Maintenance
 
-- updated_at: 2025-12-22
-- reason: ドキュメント標準追加（README.md、API仕様、デプロイ手順の完備）
+- updated_at: 2026-01-13
+- reason: レート制限デフォルト値・テストカバレッジ・テスト数の更新
