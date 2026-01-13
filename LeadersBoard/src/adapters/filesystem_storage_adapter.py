@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import fcntl
 import json
+import tempfile
 from collections.abc import Iterable
 from datetime import datetime
 from pathlib import Path
@@ -92,7 +93,11 @@ class FileSystemStorageAdapter(StoragePort):
         if not metadata_path.exists():
             raise ValueError(f"submission {submission_id} metadata not found")
 
-        # メタデータファイルを開いて排他ロックを取得
+        # ファイルデータを読み込み
+        file_data = file.read()
+        file_size = len(file_data)
+
+        # メタデータを読み込んで検証
         with open(metadata_path, 'r+', encoding='utf-8') as metadata_file:
             fcntl.flock(metadata_file.fileno(), fcntl.LOCK_EX)
             try:
@@ -106,11 +111,27 @@ class FileSystemStorageAdapter(StoragePort):
                 if filename in metadata.get("files", []):
                     raise ValueError(f"file {filename} already exists in submission {submission_id}")
 
-                # ファイルを保存
+                # 検証が成功したら、ファイルを保存
                 target_path = submission_dir / filename
-                file_data = file.read()
-                file_size = len(file_data)
-                target_path.write_bytes(file_data)
+
+                # 一時ファイルに書き込んでからアトミックに移動
+                temp_file = None
+                temp_path = None
+                try:
+                    temp_file = tempfile.NamedTemporaryFile(dir=submission_dir, delete=False)
+                    temp_file.write(file_data)
+                    temp_path = Path(temp_file.name)
+                    temp_file.close()
+
+                    # アトミックなファイル移動
+                    temp_path.replace(target_path)
+                finally:
+                    # 一時ファイルのクリーンアップ
+                    if temp_path and temp_path.exists():
+                        try:
+                            temp_path.unlink()
+                        except OSError:
+                            pass  # 移動済みの場合は無視
 
                 # メタデータを更新
                 metadata.setdefault("files", []).append(filename)

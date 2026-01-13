@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+from pathlib import Path
 from typing import Any
 
 from src.config import get_max_concurrent_running, get_max_submissions_per_hour
@@ -35,15 +36,30 @@ class EnqueueJob:
         entrypoint = metadata.get("entrypoint", "main.py")
         config_file = metadata.get("config_file", "config.yaml")
 
-        submission_count = self.rate_limit.increment_submission(user_id)
-        if submission_count > self.max_submissions_per_hour:
-            raise ValueError("submission rate limit exceeded")
+        # 完全性検証: entrypointファイルの存在確認
+        if not self.storage.validate_entrypoint(submission_id, entrypoint):
+            raise ValueError(f"entrypoint file not found: {entrypoint}")
+
+        # 完全性検証: config_fileの存在確認
+        submission_dir = self.storage.load(submission_id)
+        config_path = Path(submission_dir) / config_file
+        if not config_path.exists():
+            raise ValueError(f"config file not found: {config_file}")
 
         running = self.status.count_running(user_id)
         if running >= self.max_concurrent_running:
             raise ValueError("too many running jobs")
 
+        # レート制限チェック（ジョブ作成前にカウントを取得）
+        submission_count = self.rate_limit.get_submission_count(user_id)
+        if submission_count >= self.max_submissions_per_hour:
+            raise ValueError("submission rate limit exceeded")
+
+        # ジョブ作成前にカウンターをインクリメント
+        self.rate_limit.increment_submission(user_id)
+
         job_id = uuid.uuid4().hex
         self.status.create(job_id, submission_id, user_id)
         self.queue.enqueue(job_id, submission_id, entrypoint, config_file, config)
+
         return job_id

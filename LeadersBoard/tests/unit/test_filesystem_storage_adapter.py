@@ -251,3 +251,33 @@ def test_add_file_metadata_not_exist(tmp_path: Path) -> None:
     # メタデータが存在しない場合、新しいメタデータを作成せずエラーが発生する
     with pytest.raises(ValueError, match="submission test-submission metadata not found"):
         adapter.add_file("test-submission", file_obj, "script.py", "user123")
+
+
+def test_add_file_no_orphaned_file_on_validation_failure(tmp_path: Path) -> None:
+    """検証失敗時に孤立したファイルが残らないことを確認"""
+    root = tmp_path / "submissions"
+    adapter = FileSystemStorageAdapter(root)
+
+    # submissionを作成（所有者: user123）
+    submission_dir = root / "test-submission"
+    submission_dir.mkdir(parents=True)
+    metadata_file = submission_dir / "metadata.json"
+    metadata_file.write_text('{"files": [], "user_id": "user123"}')
+
+    file_obj = BytesIO(b"print('hello world')")
+
+    # 検証失敗（重複ファイル名）をシミュレートするために、メタデータを直接書き換え
+    metadata_file.write_text('{"files": ["script.py"], "user_id": "user123"}')
+
+    # 既に存在するファイル名で追加しようとして検証失敗
+    with pytest.raises(ValueError, match="file script.py already exists"):
+        adapter.add_file("test-submission", file_obj, "script.py", "user123")
+
+    # ファイルが書き込まれていないことを確認
+    target_file = submission_dir / "script.py"
+    assert not target_file.exists()
+
+    # メタデータが変更されていないことを確認
+    import json
+    metadata = json.loads(metadata_file.read_text())
+    assert metadata["files"] == ["script.py"]  # 変更されていないはず
