@@ -4,6 +4,7 @@ aiofiles
 alisson
 AnoDDPM
 anomalib
+appendfsync
 appendonly
 appuser
 asyncio
@@ -11,9 +12,11 @@ AUPR
 AUROC
 autouse
 Barusco
+BGSAVE
 Borsatti
 BRPOP
 BTAD
+Byungseok
 CFA
 CFA+
 CFlow
@@ -45,6 +48,8 @@ elif
 Elsevier
 esbenp
 etal
+everysec
+extractall
 fakeredis
 fastapi
 FastFlow
@@ -62,6 +67,8 @@ HSET
 httpx
 Hütten
 hypersphere
+Hyuk
+Ibarra
 ICCV
 inpainting
 ipython
@@ -111,6 +118,7 @@ passlib
 passwordless
 PatchCore
 pathlib
+Peeples
 Pezze
 plotly
 PRO
@@ -140,6 +148,7 @@ setdefault
 setuptools
 SimpleNet
 SPADE
+SPIE
 sPRO
 STFPM
 Streamlit
@@ -160,7 +169,10 @@ WACV
 wandb
 wenbihan
 WinCLIP
+Xiaolin
 Xplore
 XREADGROUP
+Yixiao
 Youssef
 yzhang
+Zotero

@@ -159,7 +159,7 @@ volumes:
 services:
   api:
     build:
-      target: dev  # 開発ステージに切り替え
+      target: dev # 開発ステージに切り替え
     volumes:
       - ..:/workspaces/2025:cached
       - shared:/shared
@@ -772,7 +772,7 @@ class JobWorker:
 ```python
 def _load_metrics(self, output_dir: Path) -> dict[str, Any]:
     """Load metrics.json from output directory.
-    
+
     Expected format:
     {
         "params": {"method": "padim", "dataset": "mvtec_ad", ...},
@@ -782,13 +782,13 @@ def _load_metrics(self, output_dir: Path) -> dict[str, Any]:
     metrics_file = output_dir / "metrics.json"
     if not metrics_file.exists():
         raise ValueError(f"metrics.json not found in {output_dir}")
-    
+
     with open(metrics_file) as f:
         data = json.load(f)
-    
+
     if "params" not in data or "metrics" not in data:
         raise ValueError("metrics.json must contain 'params' and 'metrics' fields")
-    
+
     return data
 ```
 
@@ -874,7 +874,7 @@ def _create_worker() -> JobWorker:
 - [x] 環境変数を`.env`から読み込むよう設定
 
 ```yaml
-version: '3.8'
+version: "3.8"
 
 services:
   api:
@@ -1172,7 +1172,7 @@ if "token" not in st.session_state:
     st.subheader("Login")
     username = st.text_input("Username")
     password = st.text_input("Password", type="password")
-    
+
     if st.button("Login"):
         try:
             result = login(username, password)
@@ -1185,7 +1185,7 @@ if "token" not in st.session_state:
 else:
     # メイン画面（投稿フォームなど）
     st.write(f"Welcome, {st.session_state.user_id}!")
-    
+
     # 投稿フォーム
     files = st.file_uploader("Upload files", accept_multiple_files=True)
     if st.button("Submit"):
@@ -1195,7 +1195,7 @@ else:
             files=[("files", f) for f in files]
         )
         st.json(response.json())
-    
+
     if st.button("Logout"):
         del st.session_state.token
         del st.session_state.user_id
