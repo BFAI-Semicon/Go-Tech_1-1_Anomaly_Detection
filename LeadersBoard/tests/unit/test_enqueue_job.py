@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
-from typing import Any
+from typing import Any, BinaryIO
 
 import pytest
 
@@ -36,6 +36,18 @@ class DummyStorage(StoragePort):
 
     def load_logs(self, job_id: str) -> str:
         return ""
+
+    def add_file(
+        self,
+        submission_id: str,
+        file: BinaryIO,
+        filename: str,
+        user_id: str,
+    ) -> dict[str, str]:
+        raise NotImplementedError
+
+    def list_files(self, submission_id: str, user_id: str) -> list[dict[str, str]]:
+        raise NotImplementedError
 
 
 class DummyQueue(JobQueuePort):

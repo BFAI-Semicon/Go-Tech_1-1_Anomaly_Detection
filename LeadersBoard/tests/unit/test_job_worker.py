@@ -3,7 +3,7 @@ from __future__ import annotations
 import subprocess
 import threading
 from pathlib import Path
-from typing import Any
+from typing import Any, BinaryIO
 from unittest.mock import MagicMock
 
 import pytest
@@ -37,6 +37,18 @@ class DummyStorage(StoragePort):
 
     def load_logs(self, job_id: str) -> str:
         return ""
+
+    def add_file(
+        self,
+        submission_id: str,
+        file: BinaryIO,
+        filename: str,
+        user_id: str,
+    ) -> dict[str, str]:
+        raise NotImplementedError
+
+    def list_files(self, submission_id: str, user_id: str) -> list[dict[str, str]]:
+        raise NotImplementedError
 
 
 class DummyStatus(JobStatusPort):

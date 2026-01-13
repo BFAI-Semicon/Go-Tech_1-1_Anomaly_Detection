@@ -27,6 +27,12 @@ class InMemoryStorage(StoragePort):
     def load_logs(self, job_id):
         return "log"
 
+    def add_file(self, submission_id, file, filename, user_id):
+        return {"filename": filename, "size": 100}
+
+    def list_files(self, submission_id, user_id):
+        return [{"filename": "test.py", "size": 100, "uploaded_at": "2023-01-01T00:00:00"}]
+
 
 class InMemoryQueue(JobQueuePort):
     def enqueue(self, job_id, submission_id, entrypoint, config_file, config):
