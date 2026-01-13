@@ -49,6 +49,7 @@ fakeredis
 fastapi
 FastFlow
 Francesco
+fromtimestamp
 GANomaly
 getenv
 gfortran
@@ -65,6 +66,7 @@ ICCV
 inpainting
 ipython
 isinstance
+isoformat
 isort
 kiro
 kornia
@@ -130,9 +132,11 @@ researchdata
 ResNet
 Retinex
 RIAD
+rstrip
 SAA+
 Schlosser
 scikit
+setdefault
 setuptools
 SimpleNet
 SPADE

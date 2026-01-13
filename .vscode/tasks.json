@@ -2,6 +2,12 @@
   "version": "2.0.0",
   "tasks": [
     {
+      "label": "Prettier Fix (Markdown)",
+      "type": "shell",
+      "command": "npx prettier --write \"**/*.md\"",
+      "problemMatcher": []
+    },
+    {
       "label": "Ruff Check",
       "type": "shell",
       "command": "cd LeadersBoard && ruff check .",
@@ -12,8 +18,7 @@
       "type": "shell",
       "command": "cd LeadersBoard && ruff check --fix .",
       "problemMatcher": []
-    }
-    ,
+    },
     {
       "label": "Unit Tests",
       "type": "shell",
