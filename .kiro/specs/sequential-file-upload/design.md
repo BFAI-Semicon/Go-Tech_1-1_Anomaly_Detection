@@ -574,7 +574,7 @@ class FileSystemStorageAdapter(StoragePort):
         既存submissionにファイルを追加する。
 
         Raises:
-            ValueError: submission不存在、ファイル名重複
+            ValueError: submission不存在、ファイル名重複、メタデータが存在しない
         """
         submission_dir = self.submissions_root / submission_id
         if not submission_dir.exists():
@@ -582,6 +582,8 @@ class FileSystemStorageAdapter(StoragePort):
 
         # メタデータ読み込み
         metadata_path = submission_dir / "metadata.json"
+        if not metadata_path.exists():
+            raise ValueError(f"submission {submission_id} metadata not found")
         metadata = json.loads(metadata_path.read_text())
 
         # ファイル名重複チェック

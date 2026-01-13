@@ -221,3 +221,33 @@ def test_list_files_wrong_user(tmp_path: Path) -> None:
     # 別のユーザーでアクセス
     with pytest.raises(ValueError, match="user wrong-user does not own submission"):
         adapter.list_files("test-submission", "wrong-user")
+
+
+def test_list_files_metadata_not_exist(tmp_path: Path) -> None:
+    """メタデータが存在しないsubmissionに対してエラーが発生することを確認"""
+    root = tmp_path / "submissions"
+    adapter = FileSystemStorageAdapter(root)
+
+    # submissionディレクトリを作成するが、メタデータは作成しない
+    submission_dir = root / "test-submission"
+    submission_dir.mkdir(parents=True)
+
+    # ファイルが存在してもメタデータがない場合、エラーが発生する
+    with pytest.raises(ValueError, match="submission test-submission metadata not found"):
+        adapter.list_files("test-submission", "user123")
+
+
+def test_add_file_metadata_not_exist(tmp_path: Path) -> None:
+    """メタデータが存在しないsubmissionに対してエラーが発生することを確認"""
+    root = tmp_path / "submissions"
+    adapter = FileSystemStorageAdapter(root)
+
+    # submissionディレクトリを作成するが、メタデータは作成しない
+    submission_dir = root / "test-submission"
+    submission_dir.mkdir(parents=True)
+
+    file_obj = BytesIO(b"print('hello')")
+
+    # メタデータが存在しない場合、新しいメタデータを作成せずエラーが発生する
+    with pytest.raises(ValueError, match="submission test-submission metadata not found"):
+        adapter.add_file("test-submission", file_obj, "script.py", "user123")

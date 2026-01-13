@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import fcntl
 import json
 from collections.abc import Iterable
 from datetime import datetime
@@ -86,33 +87,40 @@ class FileSystemStorageAdapter(StoragePort):
         if "/" in filename or ".." in filename:
             raise ValueError(f"invalid filename: {filename}")
 
-        # ファイルサイズ取得
-        file.seek(0, 2)  # Seek to end
-        file_size = file.tell()
-        file.seek(0)  # Reset to beginning
-
-        # メタデータ読み込みと更新
+        # メタデータ読み込みと更新（原子性確保のためファイルロックを使用）
         metadata_path = submission_dir / "metadata.json"
-        if metadata_path.exists():
-            metadata = json.loads(metadata_path.read_text())
-        else:
-            metadata = {"files": [], "user_id": user_id}
+        if not metadata_path.exists():
+            raise ValueError(f"submission {submission_id} metadata not found")
 
-        # ユーザー権限チェック
-        if metadata.get("user_id") != user_id:
-            raise ValueError(f"user {user_id} does not own submission {submission_id}")
+        # メタデータファイルを開いて排他ロックを取得
+        with open(metadata_path, 'r+', encoding='utf-8') as metadata_file:
+            fcntl.flock(metadata_file.fileno(), fcntl.LOCK_EX)
+            try:
+                metadata = json.loads(metadata_file.read())
 
-        # ファイルが既に存在するかチェック
-        if filename in metadata.get("files", []):
-            raise ValueError(f"file {filename} already exists in submission {submission_id}")
+                # ユーザー権限チェック
+                if metadata.get("user_id") != user_id:
+                    raise ValueError(f"user {user_id} does not own submission {submission_id}")
 
-        # ファイルを保存
-        target_path = submission_dir / filename
-        target_path.write_bytes(file.read())
+                # ファイルが既に存在するかチェック
+                if filename in metadata.get("files", []):
+                    raise ValueError(f"file {filename} already exists in submission {submission_id}")
 
-        # メタデータを更新
-        metadata.setdefault("files", []).append(filename)
-        metadata_path.write_text(json.dumps(metadata, ensure_ascii=False))
+                # ファイルを保存
+                target_path = submission_dir / filename
+                file_data = file.read()
+                file_size = len(file_data)
+                target_path.write_bytes(file_data)
+
+                # メタデータを更新
+                metadata.setdefault("files", []).append(filename)
+
+                # ファイルポインタを先頭に戻して書き込み
+                metadata_file.seek(0)
+                metadata_file.write(json.dumps(metadata, ensure_ascii=False))
+                metadata_file.truncate()  # 余分なデータを削除
+            finally:
+                fcntl.flock(metadata_file.fileno(), fcntl.LOCK_UN)
 
         return {"filename": filename, "size": file_size}
 
@@ -125,7 +133,7 @@ class FileSystemStorageAdapter(StoragePort):
         # メタデータ読み込み
         metadata_path = submission_dir / "metadata.json"
         if not metadata_path.exists():
-            return []
+            raise ValueError(f"submission {submission_id} metadata not found")
 
         metadata = json.loads(metadata_path.read_text())
 
