@@ -32,6 +32,7 @@ LeadersBoard は、機械学習モデルの性能を公平に比較するため�
 - データセットは**zipファイル**として投稿に含める必要があります
 - 例: `pcb1.zip` をアップロードすると、`main.py` 実行時に自動展開されます
 - `config.yaml` の `root` パラメータは展開後のパスを指定します
+
   ```yaml
   # 例: pcb1.zip → pcb1/Data/Images/
   root: pcb1/Data/Images
@@ -153,13 +154,13 @@ data:
   class_path: anomalib.data.Folder
   init_args:
     name: pcb1
-    root: pcb1/Data/Images  # zipファイル展開後のパス
+    root: pcb1/Data/Images # zipファイル展開後のパス
     normal_dir: Normal
     abnormal_dir: Anomaly
-    extensions:  # オプション: 省略時はデフォルト画像形式を使用
+    extensions: # オプション: 省略時はデフォルト画像形式を使用
       - .jpg
       - .jpeg
-      - .JPG  # 大文字拡張子も必要な場合は明示
+      - .JPG # 大文字拡張子も必要な場合は明示
       - .JPEG
       - .png
       - .PNG
@@ -196,7 +197,7 @@ def extract_dataset_if_needed(config_path: Path):
     例: pcb1.zip → pcb1/
     """
     base_dir = config_path.parent
-    
+
     # 一般的なデータセット名のzipファイルを検索
     for zip_file in base_dir.glob("*.zip"):
         dataset_dir = base_dir / zip_file.stem
@@ -214,10 +215,10 @@ def main():
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
-    
+
     # 出力ディレクトリを作成
     args.output.mkdir(parents=True, exist_ok=True)
-    
+
     # ログファイルを設定
     log_file = args.output / "training.log"
     logging.basicConfig(
@@ -229,29 +230,29 @@ def main():
         ]
     )
     logger = logging.getLogger(__name__)
-    
+
     # データセットをzipから展開（必要な場合）
     extract_dataset_if_needed(args.config)
-    
+
     # 設定ファイルを読み込み
     config = OmegaConf.load(args.config)
     config.trainer.default_root_dir = str(args.output)
-    
+
     try:
         # データモジュール、モデル、トレーナーを取得
         logger.info("Loading datamodule, model, and trainer")
         datamodule = get_datamodule(config.data)
         model = get_model(config.model)
         trainer = get_trainer(config)
-        
+
         # 学習
         logger.info("Starting training...")
         trainer.fit(model=model, datamodule=datamodule)
-        
+
         # 評価
         logger.info("Starting evaluation...")
         test_results = trainer.test(model=model, datamodule=datamodule)
-        
+
         # メトリクスを抽出
         metrics = {}
         if test_results and len(test_results) > 0:
@@ -263,7 +264,7 @@ def main():
                         metrics[key] = float(value.item())
                     except (ValueError, TypeError):
                         pass
-        
+
         # metrics.json を生成
         metrics_data = {
             "params": {
@@ -275,16 +276,16 @@ def main():
             },
             "metrics": metrics
         }
-        
+
         metrics_path = args.output / "metrics.json"
         with open(metrics_path, "w") as f:
             json.dump(metrics_data, f, indent=2)
-        
+
         logger.info(f"Training completed successfully!")
         logger.info(f"Metrics saved to {metrics_path}")
         logger.info(f"Training log saved to {log_file}")
         logger.info(f"Results: {metrics}")
-        
+
     except Exception as e:
         logger.error(f"Training failed: {e}")
         raise

@@ -25,12 +25,12 @@ Authorization: Bearer devtoken
 
 **パラメータ:**
 
-| フィールド | 型 | 必須 | 説明 |
-|-----------|-----|------|------|
-| files | File[] | ✓ | アップロードファイル（複数可） |
-| entrypoint | string | ✓ | エントリポイントファイル名（例: `main.py`） |
-| config_file | string | ✓ | 設定ファイル名（例: `config.yaml`） |
-| metadata | string | - | メタデータJSON（例: `{"method":"padim"}`） |
+| フィールド  | 型     | 必須 | 説明                                        |
+| ----------- | ------ | ---- | ------------------------------------------- |
+| files       | File[] | ✓    | アップロードファイル（複数可）              |
+| entrypoint  | string | ✓    | エントリポイントファイル名（例: `main.py`） |
+| config_file | string | ✓    | 設定ファイル名（例: `config.yaml`）         |
+| metadata    | string | -    | メタデータJSON（例: `{"method":"padim"}`）  |
 
 **レスポンス:**
 
@@ -76,11 +76,11 @@ Authorization: Bearer devtoken
 
 **パラメータ:**
 
-| フィールド | 型 | 必須 | 説明 |
-|-----------|-----|------|------|
-| submission_id | string | ✓ | 提出ID |
-| config | object | ✓ | ジョブ設定 |
-| config.resource_class | string | - | リソースクラス（`small`: 30分, `medium`: 60分） |
+| フィールド            | 型     | 必須 | 説明                                            |
+| --------------------- | ------ | ---- | ----------------------------------------------- |
+| submission_id         | string | ✓    | 提出ID                                          |
+| config                | object | ✓    | ジョブ設定                                      |
+| config.resource_class | string | -    | リソースクラス（`small`: 30分, `medium`: 60分） |
 
 **レスポンス:**
 
@@ -234,14 +234,14 @@ def main():
     parser.add_argument("--config", required=True)
     parser.add_argument("--output", required=True)
     args = parser.parse_args()
-    
+
     # 学習・評価を実行
     # ...
-    
+
     # 結果を metrics.json に出力
     output_dir = Path(args.output)
     output_dir.mkdir(parents=True, exist_ok=True)
-    
+
     metrics = {
         "params": {
             "method": "padim",
@@ -254,7 +254,7 @@ def main():
             "pixel_pro": 0.920
         }
     }
-    
+
     with open(output_dir / "metrics.json", "w") as f:
         json.dump(metrics, f, indent=2)
 
@@ -274,7 +274,7 @@ if __name__ == "__main__":
   "metrics": {
     "image_auc": 0.985,
     "pixel_auc": 0.976,
-    "pixel_pro": 0.920
+    "pixel_pro": 0.92
   }
 }
 ```

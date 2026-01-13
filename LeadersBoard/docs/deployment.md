@@ -103,7 +103,7 @@ docker-compose down -v
 
 最小構成。開発・検証環境向け。
 
-```
+```text
 ┌─────────────────────────────────────┐
 │  Docker Host (GPU required)         │
 │  ├─ API Container                   │
@@ -118,7 +118,7 @@ docker-compose down -v
 
 スケールアウト対応。本番環境向け。
 
-```
+```text
 ┌─────────────────┐  ┌──────────────────┐
 │  API Nodes      │  │  Worker Nodes    │
 │  (Load Balanced)│  │  (GPU required)  │
@@ -256,8 +256,8 @@ Docker volumes を使用：
 
 ```yaml
 volumes:
-  shared:      # 提出ファイル・アーティファクト
-  redis-data:  # Redis AOF
+  shared: # 提出ファイル・アーティファクト
+  redis-data: # Redis AOF
 ```
 
 ### 本番環境

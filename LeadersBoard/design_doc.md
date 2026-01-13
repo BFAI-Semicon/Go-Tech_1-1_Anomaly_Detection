@@ -2,7 +2,7 @@
 
 ## 目的と範囲
 
-- 本ドキュメントは「外部からの投稿 → サーバーで学習/評価 → MLflowで可視化」を、最小構成で実現する設計のみを記載します。  
+- 本ドキュメントは「外部からの投稿 → サーバーで学習/評価 → MLflowで可視化」を、最小構成で実現する設計のみを記載します。
 - 将来の拡張（EvalAI/高度なRBAC/大規模スケール）は対象外（付録や別ドキュメントで扱う）。
 
 ## システム構成（最小）
@@ -18,11 +18,11 @@
 
 ## データフロー（最小）
 
-1. 投稿準備: 認証後、`POST /submissions` で提出メタを登録（アップロード先は共有ボリューム）。  
-2. アップロード: クライアントがAPIへ直接アップロード（マルチパート）。  
-3. 実行要求: `POST /jobs` で提出IDと設定を指定し、Redisキューへ投入（APIはWorkerへ通知せず、Workerはブロッキング取得で待機）。  
-4. 学習/評価: GPUワーカーが提出物を取り出し anomalib で実行、`MLFLOW_TRACKING_URI` を用いて結果を記録。  
-5. 可視化: MLflow UIの比較ビューでランキング（リーダーズボード相当）を閲覧。  
+1. 投稿準備: 認証後、`POST /submissions` で提出メタを登録（アップロード先は共有ボリューム）。
+2. アップロード: クライアントがAPIへ直接アップロード（マルチパート）。
+3. 実行要求: `POST /jobs` で提出IDと設定を指定し、Redisキューへ投入（APIはWorkerへ通知せず、Workerはブロッキング取得で待機）。
+4. 学習/評価: GPUワーカーが提出物を取り出し anomalib で実行、`MLFLOW_TRACKING_URI` を用いて結果を記録。
+5. 可視化: MLflow UIの比較ビューでランキング（リーダーズボード相当）を閲覧。
 6. 参照: `GET /jobs/{id}/status|logs|results` で進捗/ログ/`run_id` 等を取得（`results` は `run_id` と MLflow UI/REST へのリンクを返す。API は MLflow のバックエンドDBを直接参照しない）。
 
 ## API（最小エンドポイント）
@@ -36,7 +36,7 @@
 
 ## 設計方針（Clean-lite 依存逆転）
 
-- 目的: プロトタイプ段階でも、API/Worker をデータベースや特定実装に結合させず、将来の差し替えコストを最小化する。  
+- 目的: プロトタイプ段階でも、API/Worker をデータベースや特定実装に結合させず、将来の差し替えコストを最小化する。
 - 構成（ドメイン/ポート/アダプタ）
   - ドメイン（ユースケース）: `CreateSubmission`, `EnqueueJob`, `GetJobStatus`, `GetResults`
   - ポート（API/Worker が依存する抽象）:
@@ -54,31 +54,31 @@
 
 ## ワーカー実行（最小仕様）
 
-- 実行環境: Docker（nvidia-container-runtime）でGPU割当。  
-- 入力: 共有ボリューム上のコード/データ（提出IDに紐づくパス）を作業ディレクトリへ展開。  
-- 実行: anomalibの学習/評価スクリプトを起動。  
-- 出力: メトリクス/アーティファクトを MLflow へ記録、補助成果物は共有ボリュームに保存（MLflowのartifact_uriは`file://`を使用）。  
+- 実行環境: Docker（nvidia-container-runtime）でGPU割当。
+- 入力: 共有ボリューム上のコード/データ（提出IDに紐づくパス）を作業ディレクトリへ展開。
+- 実行: anomalibの学習/評価スクリプトを起動。
+- 出力: メトリクス/アーティファクトを MLflow へ記録、補助成果物は共有ボリュームに保存（MLflowのartifact_uriは`file://`を使用）。
 - リソース: タイムアウトとCPU/GPU/メモリ上限（small/medium の2クラス程度）。
 - 依存: MLflow Tracking Server の REST/HTTP のみ（バックエンドDBには非依存）。
 
 ### キュー待機方式（ブロッキング取得）
 
-- 概要: Worker はキューに仕事が入るまで待機し、入った瞬間に取り出して処理する方式。  
-- 実現方法: Redis List の `BRPOP`、または Redis Streams の `XREADGROUP BLOCK` を使用。  
-- 待機中の負荷: CPU 使用は極小でポーリング不要（空振りアクセスが発生しない）。  
-- 起動の仕組み: 新しいジョブが入ると、Redis が待機中のコマンドに応答し、Worker が即時に“起きる”。  
-- API の役割: API はジョブをキューに入れるだけで、Worker への通知は不要。  
-- 複数 Worker: 最初に応答した 1 台が 1 件を取得（自然に水平スケール）。  
-- タイムアウト: ブロックにタイムアウトを設定し、定期ヘルスチェックやグレースフル停止が可能。  
-- 信頼性: at-least-once 前提。冪等性キー（`job_id`）で重複投入を無害化。  
-- 耐久性: 本番では AOF 永続化や Redis Streams＋再配布（未ACK）/DLQ の活用を推奨。  
+- 概要: Worker はキューに仕事が入るまで待機し、入った瞬間に取り出して処理する方式。
+- 実現方法: Redis List の `BRPOP`、または Redis Streams の `XREADGROUP BLOCK` を使用。
+- 待機中の負荷: CPU 使用は極小でポーリング不要（空振りアクセスが発生しない）。
+- 起動の仕組み: 新しいジョブが入ると、Redis が待機中のコマンドに応答し、Worker が即時に“起きる”。
+- API の役割: API はジョブをキューに入れるだけで、Worker への通知は不要。
+- 複数 Worker: 最初に応答した 1 台が 1 件を取得（自然に水平スケール）。
+- タイムアウト: ブロックにタイムアウトを設定し、定期ヘルスチェックやグレースフル停止が可能。
+- 信頼性: at-least-once 前提。冪等性キー（`job_id`）で重複投入を無害化。
+- 耐久性: 本番では AOF 永続化や Redis Streams＋再配布（未ACK）/DLQ の活用を推奨。
 
 ## MLflow ログ指針（最小）
 
-- params: method, dataset, epochs, batch_size など主要ハイパラ  
-- metrics:  
-  - 画像: `image_auc`, `image_f1`  
-  - ピクセル: `pixel_auc`, `pixel_f1`, `pixel_pro`  
+- params: method, dataset, epochs, batch_size など主要ハイパラ
+- metrics:
+  - 画像: `image_auc`, `image_f1`
+  - ピクセル: `pixel_auc`, `pixel_f1`, `pixel_pro`
   - 付帯: `inference_time_ms`, `vram_mb`
 - artifacts: ROC/PR/PRO曲線画像、可視化、ログ、モデル（必要に応じて）
 
@@ -97,15 +97,15 @@ with mlflow.start_run(run_name=run_name):
 
 ## セキュリティと公開（最小）
 
-- 認証: APIトークン（固定発行 or OIDCのトークン検証のどちらか一方）  
-- アップロード: APIへ直接アップロード（マルチパート、サイズ上限/CORS設定）  
-- 実行隔離: 非特権ユーザー、読み取り専用FS（出力のみ書込）、外向き通信は原則遮断  
-- レート制限/クォータ: 1ユーザーあたり提出回数・同時実行数の上限  
+- 認証: APIトークン（固定発行 or OIDCのトークン検証のどちらか一方）
+- アップロード: APIへ直接アップロード（マルチパート、サイズ上限/CORS設定）
+- 実行隔離: 非特権ユーザー、読み取り専用FS（出力のみ書込）、外向き通信は原則遮断
+- レート制限/クォータ: 1ユーザーあたり提出回数・同時実行数の上限
 - 公開: 最小構成では MLflow は社内（VPN）または認証付きで限定公開
 
 ## デプロイ（最小）
 
-- 単機構成: docker-compose（FastAPI, Redis, MLflow, Worker, 任意でStreamlit）  
+- 単機構成: docker-compose（FastAPI, Redis, MLflow, Worker, 任意でStreamlit）
 - 前提: NVIDIAドライバ + nvidia-container-runtime、`.env` に MLflow のURI・共有ディレクトリのパス
 
 ## コンテナ構成（最小: docker-compose）
@@ -165,7 +165,7 @@ with mlflow.start_run(run_name=run_name):
 
 ## 将来拡張（本最小構成の外）
 
-- ユーザー/RBACの強化、Postgres化、Kubernetes移行、オートスケール  
+- ユーザー/RBACの強化、Postgres化、Kubernetes移行、オートスケール
 - 一般公開チャレンジ（EvalAI 前段導入）やランキングの公式公開
 
 ---
