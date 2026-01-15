@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import fcntl
 import json
+import os
 import tempfile
 from collections.abc import Iterable
 from datetime import datetime
@@ -174,6 +175,8 @@ class FileSystemStorageAdapter(StoragePort):
         metadata_file.seek(0)
         metadata_file.write(json.dumps(metadata, ensure_ascii=False))
         metadata_file.truncate()
+        metadata_file.flush()
+        os.fsync(metadata_file.fileno())
 
     def _cleanup_temp_file(self, temp_path: Path | None) -> None:
         if temp_path and temp_path.exists():
