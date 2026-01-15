@@ -55,11 +55,16 @@ class EnqueueJob:
         if submission_count >= self.max_submissions_per_hour:
             raise ValueError("submission rate limit exceeded")
 
-        # ジョブ作成前にカウンターをインクリメント
+        # レート制限チェック通過後にカウンターをインクリメント
         self.rate_limit.increment_submission(user_id)
 
         job_id = uuid.uuid4().hex
-        self.status.create(job_id, submission_id, user_id)
-        self.queue.enqueue(job_id, submission_id, entrypoint, config_file, config)
-
-        return job_id
+        try:
+            # ジョブ作成を試行
+            self.status.create(job_id, submission_id, user_id)
+            self.queue.enqueue(job_id, submission_id, entrypoint, config_file, config)
+            return job_id
+        except Exception:
+            # ジョブ作成失敗時はカウンターをロールバック
+            self.rate_limit.decrement_submission(user_id)
+            raise  # 元の例外を再送出

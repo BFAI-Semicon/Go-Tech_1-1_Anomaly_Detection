@@ -29,3 +29,10 @@ class RedisRateLimitAdapter(RateLimitPort):
     def get_submission_count(self, user_id: str) -> int:
         value = self.redis.get(self._key(user_id))
         return int(value) if value else 0
+
+    def decrement_submission(self, user_id: str) -> int:
+        key = self._key(user_id)
+        counter = self.redis.decr(key)
+        # カウンターが0以下になった場合でもTTLは維持（念のため）
+        self.redis.expire(key, self.TTL_SECONDS)
+        return int(counter)

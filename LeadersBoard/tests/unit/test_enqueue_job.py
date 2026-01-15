@@ -101,6 +101,7 @@ class DummyRateLimit(RateLimitPort):
         self.next = next_value
         self.calls: list[str] = []
         self.increment_calls: list[str] = []
+        self.decrement_calls: list[str] = []
 
     def increment_submission(self, user_id: str) -> int:
         self.increment_calls.append(user_id)
@@ -109,6 +110,10 @@ class DummyRateLimit(RateLimitPort):
     def get_submission_count(self, user_id: str) -> int:
         self.calls.append(user_id)
         return self.next
+
+    def decrement_submission(self, user_id: str) -> int:
+        self.decrement_calls.append(user_id)
+        return self.next - 1  # デクリメント後の値を返す
 
 
 def test_execute_enqueues_job() -> None:
@@ -213,7 +218,7 @@ def test_validation_succeeds_when_files_exist() -> None:
     assert len(queue.jobs) == 1
 
 
-def test_status_create_failure_still_increments_counter() -> None:
+def test_status_create_failure_rolls_back_counter() -> None:
     storage = DummyStorage()
     queue = DummyQueue()
     status = DummyStatus(should_fail=True)  # create() で失敗する
@@ -225,12 +230,14 @@ def test_status_create_failure_still_increments_counter() -> None:
         with pytest.raises(RuntimeError, match="Status create failed"):
             use_case.execute("sub", "user", {"lr": 0.01})
 
-    # get_submission_count は呼ばれ、increment_submission もジョブ作成前に呼ばれる
+    # get_submission_count は呼ばれ、increment_submission も呼ばれるが、
+    # 失敗時に decrement_submission でロールバックされる
     assert len(limiter.calls) == 1  # get_submission_count が1回呼ばれる
-    assert len(limiter.increment_calls) == 1  # increment_submission はジョブ作成前に呼ばれる
+    assert len(limiter.increment_calls) == 1  # increment_submission が1回呼ばれる
+    assert len(limiter.decrement_calls) == 1  # decrement_submission が1回呼ばれる（ロールバック）
 
 
-def test_queue_enqueue_failure_still_increments_counter() -> None:
+def test_queue_enqueue_failure_rolls_back_counter() -> None:
     storage = DummyStorage()
     queue = DummyQueue(should_fail=True)  # enqueue() で失敗する
     status = DummyStatus()
@@ -242,13 +249,15 @@ def test_queue_enqueue_failure_still_increments_counter() -> None:
         with pytest.raises(RuntimeError, match="Queue enqueue failed"):
             use_case.execute("sub", "user", {"lr": 0.01})
 
-    # get_submission_count は呼ばれ、increment_submission もジョブ作成前に呼ばれる
+    # get_submission_count は呼ばれ、increment_submission も呼ばれるが、
+    # 失敗時に decrement_submission でロールバックされる
     assert len(limiter.calls) == 1  # get_submission_count が1回呼ばれる
-    assert len(limiter.increment_calls) == 1  # increment_submission はジョブ作成前に呼ばれる
+    assert len(limiter.increment_calls) == 1  # increment_submission が1回呼ばれる
+    assert len(limiter.decrement_calls) == 1  # decrement_submission が1回呼ばれる（ロールバック）
 
 
-def test_rate_limit_applies_even_when_queue_fails() -> None:
-    """レート制限がキュー失敗時にも適用されることを確認"""
+def test_rate_limit_rolls_back_on_failure() -> None:
+    """ジョブ作成失敗時にレート制限カウンターがロールバックされることを確認"""
     storage = DummyStorage()
     queue = DummyQueue(should_fail=True)  # 常にenqueue()が失敗する
     status = DummyStatus()
@@ -256,23 +265,24 @@ def test_rate_limit_applies_even_when_queue_fails() -> None:
 
     use_case = EnqueueJob(storage, queue, status, limiter)
 
-    # 1回目の試行（成功するはず）
+    # ジョブ作成失敗時のロールバックを確認
     with patch.object(Path, 'exists', return_value=True):
         with pytest.raises(RuntimeError, match="Queue enqueue failed"):
             use_case.execute("sub1", "user", {"lr": 0.01})
 
-    # カウンターがインクリメントされていることを確認
+    # increment と decrement が両方呼ばれることを確認
     assert len(limiter.increment_calls) == 1
-    assert limiter.increment_calls[0] == "user"
+    assert len(limiter.decrement_calls) == 1
 
-    # カウンターを1に設定して2回目の試行
-    limiter = DummyRateLimit(next_value=1)
+    # カウンターは元に戻っているので、次回の試行は可能
+    limiter2 = DummyRateLimit(next_value=0)  # カウンターは0のまま
 
-    use_case2 = EnqueueJob(storage, queue, status, limiter)
+    use_case2 = EnqueueJob(storage, queue, status, limiter2)
 
-    # 2回目の試行でも失敗するはずだが、カウンターはインクリメントされる
+    # 2回目の試行でも失敗するが、カウンターはロールバックされる
     with patch.object(Path, 'exists', return_value=True):
         with pytest.raises(RuntimeError, match="Queue enqueue failed"):
             use_case2.execute("sub2", "user", {"lr": 0.01})
 
-    assert len(limiter.increment_calls) == 1  # 2回目の試行でもカウンターはインクリメント
+    assert len(limiter2.increment_calls) == 1
+    assert len(limiter2.decrement_calls) == 1
