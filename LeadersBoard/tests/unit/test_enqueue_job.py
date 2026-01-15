@@ -174,8 +174,9 @@ def test_concurrency_limit_exceeded() -> None:
     limiter = DummyRateLimit()
 
     use_case = EnqueueJob(storage, queue, status, limiter)
-    with pytest.raises(ValueError):
-        use_case.execute("sub", "user", {})
+    with patch("pathlib.Path.exists", return_value=True):
+        with pytest.raises(ValueError, match="too many running jobs"):
+            use_case.execute("sub", "user", {})
 
 
 def test_entrypoint_validation_fails() -> None:

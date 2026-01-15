@@ -36,6 +36,15 @@ class EnqueueJob:
         entrypoint = metadata.get("entrypoint", "main.py")
         config_file = metadata.get("config_file", "config.yaml")
 
+        running = self.status.count_running(user_id)
+        if running >= self.max_concurrent_running:
+            raise ValueError("too many running jobs")
+
+        # レート制限チェック（ジョブ作成前にカウントを取得）
+        submission_count = self.rate_limit.get_submission_count(user_id)
+        if submission_count >= self.max_submissions_per_hour:
+            raise ValueError("submission rate limit exceeded")
+
         # 完全性検証: entrypointファイルの存在確認
         if not self.storage.validate_entrypoint(submission_id, entrypoint):
             raise ValueError(f"entrypoint file not found: {entrypoint}")
@@ -45,15 +54,6 @@ class EnqueueJob:
         config_path = Path(submission_dir) / config_file
         if not config_path.exists():
             raise ValueError(f"config file not found: {config_file}")
-
-        running = self.status.count_running(user_id)
-        if running >= self.max_concurrent_running:
-            raise ValueError("too many running jobs")
-
-        # レート制限チェック（ジョブ作成前にカウントを取得）
-        submission_count = self.rate_limit.get_submission_count(user_id)
-        if submission_count >= self.max_submissions_per_hour:
-            raise ValueError("submission rate limit exceeded")
 
         # レート制限チェック通過後にカウンターをインクリメント
         self.rate_limit.increment_submission(user_id)
