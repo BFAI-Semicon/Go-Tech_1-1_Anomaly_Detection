@@ -56,7 +56,9 @@ class EnqueueJob:
             raise ValueError(f"config file not found: {config_file}")
 
         # レート制限チェック通過後にカウンターをインクリメント
+        increment_succeeded = False
         self.rate_limit.increment_submission(user_id)
+        increment_succeeded = True
 
         job_id = uuid.uuid4().hex
         try:
@@ -70,6 +72,7 @@ class EnqueueJob:
                 raise
             return job_id
         except Exception:
-            # ジョブ作成失敗時はカウンターをロールバック
-            self.rate_limit.decrement_submission(user_id)
+            # ジョブ作成失敗時はカウンターをロールバック（インクリメントが成功した場合のみ）
+            if increment_succeeded:
+                self.rate_limit.decrement_submission(user_id)
             raise  # 元の例外を再送出
