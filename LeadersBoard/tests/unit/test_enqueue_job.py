@@ -10,7 +10,7 @@ import pytest
 from src.config import get_max_concurrent_running, get_max_submissions_per_hour
 from src.domain.enqueue_job import EnqueueJob
 from src.ports.job_queue_port import JobQueuePort
-from src.ports.job_status_port import JobStatusPort
+from src.ports.job_status_port import JobStatus, JobStatusPort
 from src.ports.rate_limit_port import RateLimitPort
 from src.ports.storage_port import StoragePort
 
@@ -79,6 +79,7 @@ class DummyStatus(JobStatusPort):
     def __init__(self, running: int = 0, should_fail: bool = False) -> None:
         self.running = running
         self.created: list[tuple[str, str, str]] = []
+        self.updated: list[tuple[str, JobStatus, dict[str, Any]]] = []
         self.should_fail = should_fail
 
     def create(self, job_id: str, submission_id: str, user_id: str) -> None:
@@ -86,8 +87,8 @@ class DummyStatus(JobStatusPort):
             raise RuntimeError("Status create failed")
         self.created.append((job_id, submission_id, user_id))
 
-    def update(self, job_id: str, status, **kwargs: Any) -> None:
-        pass
+    def update(self, job_id: str, status: JobStatus, **kwargs: Any) -> None:
+        self.updated.append((job_id, status, kwargs))
 
     def get_status(self, job_id: str):
         return {}
@@ -254,6 +255,12 @@ def test_queue_enqueue_failure_rolls_back_counter() -> None:
     assert len(limiter.calls) == 1  # get_submission_count が1回呼ばれる
     assert len(limiter.increment_calls) == 1  # increment_submission が1回呼ばれる
     assert len(limiter.decrement_calls) == 1  # decrement_submission が1回呼ばれる（ロールバック）
+
+    # queue.enqueue() が失敗した場合、ジョブステータスが FAILED に更新されることを確認
+    assert len(status.updated) == 1
+    job_id, status_enum, kwargs = status.updated[0]
+    assert status_enum == JobStatus.FAILED
+    assert kwargs == {"error_message": "Queue enqueue failed"}
 
 
 def test_rate_limit_rolls_back_on_failure() -> None:

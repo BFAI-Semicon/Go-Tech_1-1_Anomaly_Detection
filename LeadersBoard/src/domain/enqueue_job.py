@@ -6,7 +6,7 @@ from typing import Any
 
 from src.config import get_max_concurrent_running, get_max_submissions_per_hour
 from src.ports.job_queue_port import JobQueuePort
-from src.ports.job_status_port import JobStatusPort
+from src.ports.job_status_port import JobStatus, JobStatusPort
 from src.ports.rate_limit_port import RateLimitPort
 from src.ports.storage_port import StoragePort
 
@@ -62,7 +62,12 @@ class EnqueueJob:
         try:
             # ジョブ作成を試行
             self.status.create(job_id, submission_id, user_id)
-            self.queue.enqueue(job_id, submission_id, entrypoint, config_file, config)
+            try:
+                self.queue.enqueue(job_id, submission_id, entrypoint, config_file, config)
+            except Exception:
+                # queue.enqueue()が失敗したら、ステータスをFAILEDに更新して孤立レコードを防ぐ
+                self.status.update(job_id, JobStatus.FAILED, error_message="Queue enqueue failed")
+                raise
             return job_id
         except Exception:
             # ジョブ作成失敗時はカウンターをロールバック

@@ -199,7 +199,12 @@ class FileSystemStorageAdapter(StoragePort):
         if not metadata_path.exists():
             raise ValueError(f"submission {submission_id} metadata not found")
 
-        metadata = json.loads(metadata_path.read_text())
+        with open(metadata_path, encoding='utf-8') as metadata_file:
+            fcntl.flock(metadata_file.fileno(), fcntl.LOCK_SH)
+            try:
+                metadata = json.loads(metadata_file.read())
+            finally:
+                fcntl.flock(metadata_file.fileno(), fcntl.LOCK_UN)
 
         # ユーザー権限チェック
         if metadata.get("user_id") != user_id:
