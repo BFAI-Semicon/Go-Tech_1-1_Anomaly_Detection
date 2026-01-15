@@ -42,7 +42,7 @@ class EnqueueJob:
 
         # レート制限チェック（ジョブ作成前にカウントを取得）
         submission_count = self.rate_limit.get_submission_count(user_id)
-        if submission_count >= self.max_submissions_per_hour:
+        if submission_count > self.max_submissions_per_hour:
             raise ValueError("submission rate limit exceeded")
 
         # 完全性検証: entrypointファイルの存在確認
