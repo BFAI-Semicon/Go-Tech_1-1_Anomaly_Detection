@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Final
+from typing import Any, Final, cast
 
 from redis import Redis
 
@@ -13,7 +13,7 @@ class RedisRateLimitAdapter(RateLimitPort):
     TTL_SECONDS: Final[int] = 3600
     KEY_PREFIX: Final[str] = "leaderboard:rate:"
 
-    def __init__(self, redis_client: Redis, prefix: str | None = None) -> None:
+    def __init__(self, redis_client: Redis[Any], prefix: str | None = None) -> None:
         self.redis = redis_client
         self.key_prefix = prefix or self.KEY_PREFIX
 
@@ -36,3 +36,30 @@ class RedisRateLimitAdapter(RateLimitPort):
         # カウンターが0以下になった場合でもTTLは維持（念のため）
         self.redis.expire(key, self.TTL_SECONDS)
         return int(counter)
+
+    def try_increment_submission(self, user_id: str, max_count: int) -> bool:
+        key = self._key(user_id)
+
+        # Luaスクリプトでアトミックにチェック＆インクリメントを実行
+        # KEYS[1]: カウンターキー
+        # ARGV[1]: max_count
+        # ARGV[2]: TTL
+        script = """
+        local current = redis.call('GET', KEYS[1])
+        if not current then
+            current = 0
+        else
+            current = tonumber(current)
+        end
+
+        if current < tonumber(ARGV[1]) then
+            local new_value = redis.call('INCR', KEYS[1])
+            redis.call('EXPIRE', KEYS[1], ARGV[2])
+            return 1  -- 成功
+        else
+            return 0  -- 制限超過
+        end
+        """
+
+        result = cast(int, self.redis.eval(script, 1, key, max_count, self.TTL_SECONDS))  # type: ignore[no-untyped-call]
+        return result == 1

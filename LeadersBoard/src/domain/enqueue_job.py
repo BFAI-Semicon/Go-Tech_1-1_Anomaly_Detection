@@ -40,24 +40,24 @@ class EnqueueJob:
         if running >= self.max_concurrent_running:
             raise ValueError("too many running jobs")
 
-        # レート制限チェック（ジョブ作成前にカウントを取得）
-        submission_count = self.rate_limit.get_submission_count(user_id)
-        if submission_count > self.max_submissions_per_hour:
+        # レート制限チェック（アトミックなチェック＆インクリメント）
+        if not self.rate_limit.try_increment_submission(user_id, self.max_submissions_per_hour):
             raise ValueError("submission rate limit exceeded")
 
         # 完全性検証: entrypointファイルの存在確認
         if not self.storage.validate_entrypoint(submission_id, entrypoint):
+            # 検証失敗時はカウンターをロールバック
+            self.rate_limit.decrement_submission(user_id)
             raise ValueError(f"entrypoint file not found: {entrypoint}")
 
         # 完全性検証: config_fileの存在確認
         submission_dir = self.storage.load(submission_id)
         config_path = Path(submission_dir) / config_file
         if not config_path.exists():
+            # 検証失敗時はカウンターをロールバック
+            self.rate_limit.decrement_submission(user_id)
             raise ValueError(f"config file not found: {config_file}")
 
-        # レート制限チェック通過後にカウンターをインクリメント
-        increment_succeeded = False
-        self.rate_limit.increment_submission(user_id)
         increment_succeeded = True
 
         job_id = uuid.uuid4().hex
