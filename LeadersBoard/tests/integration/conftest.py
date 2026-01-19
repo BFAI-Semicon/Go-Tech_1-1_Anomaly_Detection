@@ -41,6 +41,7 @@ class MockRateLimitAdapter(RateLimitPort):
     def try_increment_with_concurrency_check(
         self, user_id: str, max_concurrency: int, max_rate: int
     ) -> bool:
+        # 統合テストでは常に許可
         return True
 
 
@@ -97,13 +98,16 @@ def integration_context(tmp_path: Path) -> Generator[IntegrationContext]:
     tracking_adapter = MockTrackingAdapter()
     job_worker = JobWorker(queue_adapter, status_adapter, storage, tracking_adapter, artifacts_root=artifacts_root)
 
+    mock_rate_limit = MockRateLimitAdapter()
+    mock_enqueue_job = EnqueueJob(storage, queue_adapter, status_adapter, mock_rate_limit)
     overrides: dict[Callable[..., Any], Callable[..., Any]] = {
         submissions_module.get_storage: lambda: storage,
         jobs_module.get_storage: lambda: storage,
         submissions_module.get_current_user: lambda: "integration-user",
         jobs_module.get_current_user: lambda: "integration-user",
         jobs_module.get_redis_client: lambda: fake_redis,
-        jobs_module.get_rate_limit: lambda: MockRateLimitAdapter(),
+        jobs_module.get_rate_limit: lambda redis_client=None, job_status=None: mock_rate_limit,
+        jobs_module.get_enqueue_job: lambda storage=None, queue=None, status=None, redis_client=None: mock_enqueue_job,
     }
     app.dependency_overrides.update(overrides)
     client = TestClient(app)
@@ -119,7 +123,7 @@ def integration_context(tmp_path: Path) -> Generator[IntegrationContext]:
         rate_limit_adapter=rate_limit_adapter,
         job_worker=job_worker,
         create_submission=CreateSubmission(storage),
-        enqueue_job=EnqueueJob(storage, queue_adapter, status_adapter, MockRateLimitAdapter()),
+        enqueue_job=EnqueueJob(storage, queue_adapter, status_adapter, rate_limit_adapter),
     )
 
     try:

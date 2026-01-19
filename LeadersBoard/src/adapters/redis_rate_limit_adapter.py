@@ -22,6 +22,10 @@ class RedisRateLimitAdapter(RateLimitPort):
     def _key(self, user_id: str) -> str:
         return f"{self.key_prefix}{user_id}"
 
+    def _running_count_key(self, user_id: str) -> str:
+        # ジョブステータスアダプタと同じキープレフィックスを使用
+        return f"leaderboard:running:{user_id}"
+
     def increment_submission(self, user_id: str) -> int:
         key = self._key(user_id)
         counter = self.redis.incr(key)
@@ -69,22 +73,30 @@ class RedisRateLimitAdapter(RateLimitPort):
     def try_increment_with_concurrency_check(
         self, user_id: str, max_concurrency: int, max_rate: int
     ) -> bool:
-        # 実行中ジョブ数を最新の状態で取得（Luaスクリプト実行直前）
-        current_running = self.job_status.count_running(user_id)
         key = self._key(user_id)
+        running_key = self._running_count_key(user_id)
 
         # Luaスクリプトでconcurrency limitとrate limitをアトミックにチェック＆インクリメント
-        # KEYS[1]: カウンターキー
+        # KEYS[1]: レート制限カウンターキー
+        # KEYS[2]: 実行中ジョブ数カウンターキー
         # ARGV[1]: max_concurrency (同時実行数制限)
         # ARGV[2]: max_rate (レート制限)
-        # ARGV[3]: current_running (現在の実行中ジョブ数)
-        # ARGV[4]: TTL
+        # ARGV[3]: TTL
         script = """
-        local current_running = tonumber(ARGV[3])
+        -- 実行中ジョブ数を取得
+        local current_running = redis.call('GET', KEYS[2])
+        if not current_running then
+            current_running = 0
+        else
+            current_running = tonumber(current_running)
+        end
+
+        -- 同時実行制限チェック
         if current_running >= tonumber(ARGV[1]) then
             return 0  -- concurrency limit exceeded
         end
 
+        -- レート制限チェック
         local rate_count = redis.call('GET', KEYS[1])
         if not rate_count then
             rate_count = 0
@@ -98,9 +110,9 @@ class RedisRateLimitAdapter(RateLimitPort):
 
         -- 両方の制限を満たしているのでrate limitカウンターをインクリメント
         local new_value = redis.call('INCR', KEYS[1])
-        redis.call('EXPIRE', KEYS[1], ARGV[4])
+        redis.call('EXPIRE', KEYS[1], ARGV[3])
         return 1  -- success
         """
 
-        result = cast(int, self.redis.eval(script, 1, key, max_concurrency, max_rate, current_running, self.TTL_SECONDS))  # type: ignore[no-untyped-call]
+        result = cast(int, self.redis.eval(script, 2, key, running_key, max_concurrency, max_rate, self.TTL_SECONDS))  # type: ignore[no-untyped-call]
         return result == 1
