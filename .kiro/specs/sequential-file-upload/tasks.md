@@ -46,7 +46,7 @@
   - レスポンス形式の統一（ファイル名・サイズ返却）
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8_
 
-- [ ] 4.2 GET /submissions/{submission_id}/files エンドポイントの実装
+- [x] 4.2 GET /submissions/{submission_id}/files エンドポイントの実装
   - GetSubmissionFilesユースケースとの統合
   - 認証・権限チェック・エラーハンドリングを実装
   - ファイル一覧とメタデータのJSONレスポンス返却

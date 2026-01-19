@@ -3,13 +3,14 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
-from typing import BinaryIO, cast
+from typing import Any, BinaryIO, cast
 
 from fastapi import APIRouter, Depends, File, Form, Header, HTTPException, UploadFile
 
 from src.adapters.filesystem_storage_adapter import FileSystemStorageAdapter
 from src.domain.add_submission_file import AddSubmissionFile
 from src.domain.create_submission import CreateSubmission
+from src.domain.get_submission_files import GetSubmissionFiles
 from src.ports.storage_port import StoragePort
 
 router = APIRouter()
@@ -21,7 +22,7 @@ class NamedBinaryIO:
         self.filename = filename
         self.name = filename
 
-    def __getattr__(self, item):
+    def __getattr__(self, item: str) -> Any:
         return getattr(self._stream, item)
 
 
@@ -56,6 +57,10 @@ def get_add_submission_file(storage: StoragePort = get_storage_dep) -> AddSubmis
     return AddSubmissionFile(storage)
 
 
+def get_get_submission_files(storage: StoragePort = get_storage_dep) -> GetSubmissionFiles:
+    return GetSubmissionFiles(storage)
+
+
 def get_current_user(authorization: str | None = Header(None)) -> str:
     token_prefix = "Bearer "
     tokens = [token.strip() for token in os.getenv("API_TOKENS", "").split(",") if token.strip()]
@@ -76,6 +81,7 @@ metadata_dep = Form("{}")
 current_user_dep = Depends(get_current_user)
 create_submission_dep = Depends(get_create_submission)
 add_submission_file_dep = Depends(get_add_submission_file)
+get_submission_files_dep = Depends(get_get_submission_files)
 file_dep = File(...)
 
 
@@ -142,3 +148,36 @@ async def add_submission_file(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     finally:
         await file.close()
+
+
+@router.get("/submissions/{submission_id}/files")
+async def get_submission_files(
+    submission_id: str,
+    user_id: str = current_user_dep,
+    get_submission_files_use_case: GetSubmissionFiles = get_submission_files_dep,
+) -> dict[str, list[dict[str, Any]]]:
+    """
+    submissionのファイル一覧を取得する。
+
+    Args:
+        submission_id: submission ID
+        user_id: 認証済みユーザーID
+        get_submission_files_use_case: GetSubmissionFilesユースケース
+
+    Returns:
+        {"files": [{"filename": str, "size": int, "uploaded_at": str}, ...]}
+
+    Raises:
+        HTTPException: 認証失敗、submission不存在、権限不足
+    """
+    try:
+        files = get_submission_files_use_case.execute(submission_id, user_id)
+        return {"files": files}
+    except ValueError as exc:
+        error_message = str(exc)
+        if "not found" in error_message:
+            raise HTTPException(status_code=404, detail=error_message) from exc
+        elif "permission" in error_message or "denied" in error_message:
+            raise HTTPException(status_code=403, detail="access denied") from exc
+        else:
+            raise HTTPException(status_code=400, detail=error_message) from exc

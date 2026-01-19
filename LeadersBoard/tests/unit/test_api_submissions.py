@@ -197,3 +197,97 @@ def test_add_submission_file_validation_error() -> None:
 
     assert response.status_code == 400
     # Use case may or may not be called depending on validation order
+
+
+class DummyGetSubmissionFiles:
+    def __init__(self, files: list[dict[str, Any]] | None = None, should_fail: bool = False) -> None:
+        self.files = files or [
+            {"filename": "main.py", "size": 1024, "uploaded_at": "2025-12-26T10:30:00"},
+            {"filename": "config.yaml", "size": 512, "uploaded_at": "2025-12-26T10:30:15"}
+        ]
+        self.should_fail = should_fail
+        self.calls: list[tuple[str, str]] = []
+
+    def execute(self, submission_id: str, user_id: str) -> list[dict[str, Any]]:
+        self.calls.append((submission_id, user_id))
+        if self.should_fail:
+            raise ValueError("submission not found" if submission_id == "nonexistent" else "permission denied")
+        return self.files
+
+
+def test_get_submission_files_success() -> None:
+    """ファイル一覧取得APIの成功ケースをテスト"""
+    get_files_use_case = DummyGetSubmissionFiles()
+
+    def override_get_submission_files() -> DummyGetSubmissionFiles:
+        return get_files_use_case
+
+    app.dependency_overrides[submissions_module.get_get_submission_files] = override_get_submission_files
+    override_current_user()
+
+    response = test_client.get(
+        "/submissions/test-submission/files",
+        headers={"Authorization": "Bearer devtoken"}
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert "files" in data
+    assert len(data["files"]) == 2
+
+    # Check file structure
+    files = data["files"]
+    assert files[0]["filename"] == "main.py"
+    assert files[0]["size"] == 1024
+    assert files[0]["uploaded_at"] == "2025-12-26T10:30:00"
+
+    assert files[1]["filename"] == "config.yaml"
+    assert files[1]["size"] == 512
+    assert files[1]["uploaded_at"] == "2025-12-26T10:30:15"
+
+    # Check use case was called correctly
+    assert len(get_files_use_case.calls) == 1
+    assert get_files_use_case.calls[0] == ("test-submission", "user-1")
+
+
+def test_get_submission_files_not_found() -> None:
+    """存在しないsubmissionのファイル一覧取得をテスト"""
+    get_files_use_case = DummyGetSubmissionFiles(should_fail=True)
+
+    def override_get_submission_files() -> DummyGetSubmissionFiles:
+        return get_files_use_case
+
+    app.dependency_overrides[submissions_module.get_get_submission_files] = override_get_submission_files
+    override_current_user()
+
+    response = test_client.get(
+        "/submissions/nonexistent/files",
+        headers={"Authorization": "Bearer devtoken"}
+    )
+
+    assert response.status_code == 404
+
+
+def test_get_submission_files_unauthorized() -> None:
+    """認証なしでのファイル一覧取得をテスト"""
+    response = test_client.get("/submissions/test-submission/files")
+
+    assert response.status_code == 401
+
+
+def test_get_submission_files_forbidden() -> None:
+    """他人のsubmissionアクセスをテスト"""
+    get_files_use_case = DummyGetSubmissionFiles(should_fail=True)
+
+    def override_get_submission_files() -> DummyGetSubmissionFiles:
+        return get_files_use_case
+
+    app.dependency_overrides[submissions_module.get_get_submission_files] = override_get_submission_files
+    override_current_user()
+
+    response = test_client.get(
+        "/submissions/other-submission/files",
+        headers={"Authorization": "Bearer devtoken"}
+    )
+
+    assert response.status_code == 403
