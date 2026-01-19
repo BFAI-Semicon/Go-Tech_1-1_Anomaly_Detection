@@ -45,9 +45,10 @@ def get_job_status(redis_client: Redis = redis_dep) -> JobStatusPort:
     return RedisJobStatusAdapter(redis_client)
 
 
-def get_rate_limit(redis_client: Redis = redis_dep) -> RateLimitPort:
-    # Get job_status dependency inside the function to avoid B008 error
-    job_status = get_job_status(redis_client)
+def get_rate_limit(redis_client: Redis = redis_dep, job_status: JobStatusPort | None = None) -> RateLimitPort:
+    # Use provided job_status or create new one to avoid B008 error
+    if job_status is None:
+        job_status = get_job_status(redis_client)
     return RedisRateLimitAdapter(redis_client, job_status)
 
 
@@ -58,7 +59,6 @@ def get_mlflow_uri() -> str:
 storage_dep = Depends(get_storage)
 queue_dep = Depends(get_job_queue)
 status_dep = Depends(get_job_status)
-rate_limit_dep = Depends(get_rate_limit)
 mlflow_uri_dep = Depends(get_mlflow_uri)
 
 
@@ -81,8 +81,9 @@ def get_enqueue_job(
     storage: StoragePort = storage_dep,
     queue: JobQueuePort = queue_dep,
     status: JobStatusPort = status_dep,
-    rate_limit: RateLimitPort = rate_limit_dep,
+    redis_client: Redis = redis_dep,
 ) -> EnqueueJob:
+    rate_limit = get_rate_limit(redis_client, status)
     return EnqueueJob(storage, queue, status, rate_limit)
 
 
