@@ -59,7 +59,8 @@ class EnqueueJob:
             file_exists = config_path.exists()
         except (OSError, PermissionError):
             # ファイルシステム操作中の例外時もカウンターをロールバック
-            self.rate_limit.decrement_submission(user_id)
+            if increment_succeeded:
+                self.rate_limit.decrement_submission(user_id)
             raise
         except Exception:
             # その他の予期せぬ例外でもカウンターをロールバック
