@@ -50,35 +50,11 @@ class EnqueueJob:
                 raise ValueError("submission rate limit exceeded")
         increment_succeeded = True
 
-        # 完全性検証: entrypointファイルの存在確認
-        if not self.storage.validate_entrypoint(submission_id, entrypoint):
-            # 検証失敗時はカウンターをロールバック
-            self.rate_limit.decrement_submission(user_id)
-            raise ValueError(f"entrypoint file not found: {entrypoint}")
-
-        # 完全性検証: config_fileの存在確認
-        try:
-            submission_dir = self.storage.load(submission_id)
-            config_path = Path(submission_dir) / config_file
-            file_exists = config_path.exists()
-        except (OSError, PermissionError):
-            # ファイルシステム操作中の例外時もカウンターをロールバック
-            if increment_succeeded:
-                self.rate_limit.decrement_submission(user_id)
-            raise
-        except Exception:
-            # その他の予期せぬ例外でもカウンターをロールバック
-            if increment_succeeded:
-                self.rate_limit.decrement_submission(user_id)
-            raise
-
-        if not file_exists:
-            # 検証失敗時はカウンターをロールバック
-            self.rate_limit.decrement_submission(user_id)
-            raise ValueError(f"config file not found: {config_file}")
-
         job_id = uuid.uuid4().hex
         try:
+            # 完全性検証
+            self._validate_submission(submission_id, entrypoint, config_file)
+
             # ジョブ作成を試行
             self.status.create(job_id, submission_id, user_id)
             try:
@@ -93,3 +69,15 @@ class EnqueueJob:
             if increment_succeeded:
                 self.rate_limit.decrement_submission(user_id)
             raise  # 元の例外を再送出
+
+    def _validate_submission(self, submission_id: str, entrypoint: str, config_file: str) -> None:
+        """提出物の完全性検証を行う."""
+        # 完全性検証: entrypointファイルの存在確認
+        if not self.storage.validate_entrypoint(submission_id, entrypoint):
+            raise ValueError(f"entrypoint file not found: {entrypoint}")
+
+        # 完全性検証: config_fileの存在確認
+        submission_dir = self.storage.load(submission_id)
+        config_path = Path(submission_dir) / config_file
+        if not config_path.exists():
+            raise ValueError(f"config file not found: {config_file}")
