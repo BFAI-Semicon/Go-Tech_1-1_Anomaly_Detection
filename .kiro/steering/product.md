@@ -33,13 +33,13 @@ ML実験プラットフォーム「LeadersBoard」は、外部からの投稿（
 
 - **Version**: 0.1.0
 - **Phase**: 本番準備完了（コア機能・順次アップロード・UI・ドキュメント完備）
-- **Test Coverage**: 91%（目標80%超過）
-- **Implementation**: T1-T15完了 + 順次ファイルアップロード機能（T4.1-4.3）完了
-- **Test Count**: 66件（ユニット56件 + 統合10件）
+- **Test Coverage**: 89%（目標80%超過、一部統合テスト修正中）
+- **Implementation**: T1-T15完了 + 順次ファイルアップロード機能（T4.1-4.3）完了 + アトミック同時実行制限機能完了
+- **Test Count**: 117件（ユニット110件 + 統合7件）
 - **UI Capabilities**: 提出フォーム、ジョブ一覧（自動更新対応）、ステータス監視、ログ表示、MLflowリンク生成
 - **Documentation**: README.md、API仕様（docs/api.md）、デプロイ手順（docs/deployment.md）完備
 
 ## Maintenance
 
 - updated_at: 2026-01-19
-- reason: 順次ファイルアップロード機能の追加とプロジェクトステータス更新
+- reason: アトミック同時実行制限機能の実装とステータス更新

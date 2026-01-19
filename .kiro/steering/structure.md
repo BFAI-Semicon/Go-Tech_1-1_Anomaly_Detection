@@ -32,11 +32,14 @@ Clean-lite設計（ドメイン/ポート/アダプタ）を採用し、ドメ�
 ### レート制限層
 
 **Location**: `/src/ports/rate_limit_port.py` + `/src/adapters/redis_rate_limit_adapter.py`  
-**Purpose**: ユーザーごとの提出頻度を制御する。  
+**Purpose**: ユーザーごとの提出頻度と同時実行ジョブ数を制御する。  
 API 側で Redis カウンター（`leaderboard:rate:{user_id}`）を参照し、3600 秒の時間ウィンドウ内で 50 回を超える提出を拒否する。
-**Pattern**:
+**Enhanced Pattern**:
 
-- `RateLimitPort.increment_submission` は `RedisRateLimitAdapter` を使って `INCR` + `EXPIRE` で値を更新する。  
+- **Atomic Concurrency + Rate Limiting**: `try_increment_with_concurrency_check()` で同時実行数制限とレート制限をLuaスクリプトでアトミックにチェック・更新
+- **Adapter Interdependency**: `RedisRateLimitAdapter` が `JobStatusPort` に依存し、`count_running()` でリアルタイムの実行中ジョブ数を取得
+- **Improved Error Handling**: ジョブ作成失敗時のカウンターロールバック（`decrement_submission()`）で正確な制限管理を実現
+- **Basic Implementation**: `RateLimitPort.increment_submission` は `RedisRateLimitAdapter` を使って `INCR` + `EXPIRE` で値を更新する。  
   TTL 3600 秒でリセットされ、`get_submission_count` は現在値を API の再投入やワーカーの判断に返す。
 - `EnqueueJob` では `RateLimitPort` を先行して呼び出し、制限違反を検知する。  
   合格すれば `JobQueuePort` と `JobStatusPort` に渡してキュー投入し、公平性を維持する。
@@ -231,8 +234,10 @@ from src.adapters.filesystem_storage_adapter import FileSystemStorageAdapter
 - **ポート**: 抽象インタフェース（実装詳細を隠蔽）
 - **アダプタ**: 具体実装（差し替え可能）
 - **EnqueueJob**: `RateLimitPort` で `MAX_SUBMISSIONS_PER_HOUR = 50` と
-  `MAX_CONCURRENT_RUNNING = 2` を順番に検証し、  
-  Redis カウンターが示す提出数を超えないときだけ `JobQueuePort` と `JobStatusPort` に渡す。  
+  `MAX_CONCURRENT_RUNNING = 2` をアトミックに検証し、
+  Redis カウンターが示す提出数を超えないときだけ `JobQueuePort` と `JobStatusPort` に渡す。
+  **Enhanced Validation**: ジョブ投入前に `entrypoint` と `config_file` の存在を確認し、完全性検証を実施。
+  **Error Handling**: ジョブ作成失敗時のカウンターロールバックで正確な制限管理を実現。
   ドメインでレート制限ロジックを分離することで API/Worker はリミッタの内部実装に依存しない。
 
 ### テスト戦略
@@ -246,10 +251,10 @@ from src.adapters.filesystem_storage_adapter import FileSystemStorageAdapter
   - **Coverage**: エンドツーエンドフロー、metrics.json読み取り、セキュリティ（パストラバーサル）、エラーハンドリング（OOM、タイムアウト、metrics.json不在/不正）
   - **Count**: 10件
 - **境界テスト**: ファイルサイズ上限、タイムアウト、重複投入、OOM等
-- **Overall Coverage**: 91%（目標80%達成）
-- **Total Tests**: 66件
+- **Overall Coverage**: 89%（目標80%達成）
+- **Total Tests**: 117件
 
 ## Maintenance
 
 - updated_at: 2026-01-19
-- reason: 順次ファイルアップロード機能のユースケース・APIエンドポイント・ポート拡張の追加
+- reason: EnqueueJobの完全性検証・カウンターロールバック・アダプタ間依存関係パターンの追加

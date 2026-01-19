@@ -55,8 +55,12 @@
 - **Domain Policy**: `EnqueueJob` は `MAX_SUBMISSIONS_PER_HOUR = 50` と
   `MAX_CONCURRENT_RUNNING = 2` を順番に検証する。
   `JobStatusPort` のあと `RateLimitPort` を呼び出し、違反時は `ValueError` で拒否する。
-- **Implementation**: `RedisRateLimitAdapter` は `leaderboard:rate:` プレフィックスの Redis カウンターを使う。  
-  `INCR` + `EXPIRE`（TTL 3600 秒）で提出数を管理し、`increment_submission`/`get_submission_count` を提供する。  
+- **Enhanced Implementation**: `RedisRateLimitAdapter` は `JobStatusPort` を統合し、レート制限と同時実行制限をアトミックにチェックする。
+  - `try_increment_with_concurrency_check()`: Luaスクリプトで同時実行数とレート制限を同時に検証・更新
+  - `JobStatusPort.count_running()`: リアルタイムの実行中ジョブ数を取得して正確な同時実行制限を実現
+  - **Adapter Interdependency**: アダプタが他のポートに依存する新しいパターンで、より洗練されたビジネスロジックを実現
+- **Basic Implementation**: `leaderboard:rate:` プレフィックスの Redis カウンターを使う。
+  `INCR` + `EXPIRE`（TTL 3600 秒）で提出数を管理し、`increment_submission`/`get_submission_count` を提供する。
   ドメインは注入されたポート経由で `enqueue` 前のゲートを構築する。
 
 ## Development Standards
@@ -89,8 +93,8 @@
 
 - **Framework**: `pytest`
 - **Coverage**: 80%以上推奨（ドメインロジック・ポート実装は必須）
-  - **現在の達成状況**: 91%（目標達成）
-  - **テスト数**: 66件（ユニット56件 + 統合10件）
+  - **現在の達成状況**: 89%（目標達成、一部統合テスト修正中）
+  - **テスト数**: 117件（ユニット110件 + 統合7件）
 - **Integration Test**: docker-compose環境でエンドツーエンドテスト
 - **Test Organization**:
   - `/tests/unit/` - モックアダプタを使用した高速テスト（ドメイン・アダプタ・API・Worker・Streamlit UI）
@@ -183,8 +187,11 @@ docker-compose -f docker-compose.yml up --build
 
 - **目的**: プロトタイプ段階でも、API/Workerをデータベースや特定実装に結合させず、将来の差し替えコストを最小化
 - **実装**: ポート（抽象）とアダプタ（実装）を分離
-  - ポート: `StoragePort`, `JobQueuePort`, `JobStatusPort`, `TrackingPort`
+  - ポート: `StoragePort`, `JobQueuePort`, `JobStatusPort`, `TrackingPort`, `RateLimitPort`
   - アダプタ: ファイルシステム、Redis、MLflow Tracking Server（HTTP/REST）
+- **Advanced Pattern**: アダプタ間相互依存（Adapter Interdependency）
+  - `RedisRateLimitAdapter` が `JobStatusPort` に依存し、より洗練されたビジネスロジックを実現
+  - ポートの組み合わせで複雑なユースケースをサポートしつつ、ドメイン層の純粋性を維持
 
 ### MLflowバックエンドDB非依存
 
@@ -284,4 +291,4 @@ render_jobs_with_auto_refresh = st.fragment(run_every="5s")(_render_jobs)
 ## Maintenance
 
 - updated_at: 2026-01-19
-- reason: 順次ファイルアップロード機能のAPIエンドポイント追加
+- reason: アトミック同時実行制限・レート制限の実装とアダプタ間依存関係の追加
