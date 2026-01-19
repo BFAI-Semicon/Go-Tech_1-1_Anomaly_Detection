@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from io import BytesIO
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, Mock, call, patch
 
 import requests
 
@@ -127,6 +127,9 @@ def test_add_submission_file_success(mock_post: MagicMock) -> None:
             self.content = content
             self.type = type_
 
+        def seek(self, position: int) -> None:
+            pass  # モックなので何もしない
+
     file_obj = MockUploadedFile("dataset.zip", b"zip content", "application/zip")
 
     result = streamlit_app.add_submission_file(
@@ -163,6 +166,9 @@ def test_add_submission_file_retry_on_5xx_error(mock_post: MagicMock) -> None:
             self.content = content
             self.type = type_
 
+        def seek(self, position: int) -> None:
+            pass  # モックなので何もしない
+
     file_obj = MockUploadedFile("dataset.zip", b"zip content", "application/zip")
 
     result = streamlit_app.add_submission_file(
@@ -194,6 +200,9 @@ def test_add_submission_file_no_retry_on_4xx_error(mock_post: MagicMock) -> None
             self.content = content
             self.type = type_
 
+        def seek(self, position: int) -> None:
+            pass  # モックなので何もしない
+
     file_obj = MockUploadedFile("dataset.zip", b"zip content", "application/zip")
 
     try:
@@ -224,6 +233,9 @@ def test_add_submission_file_max_retries_exceeded(mock_post: MagicMock) -> None:
             self.name = name
             self.content = content
             self.type = type_
+
+        def seek(self, position: int) -> None:
+            pass  # モックなので何もしない
 
     file_obj = MockUploadedFile("dataset.zip", b"zip content", "application/zip")
 
@@ -331,3 +343,39 @@ def test_submit_files_sequentially_no_files() -> None:
         raise AssertionError("Should have raised ValueError")
     except ValueError as e:
         assert "No files to upload" in str(e)
+
+
+@patch("src.streamlit.app.requests.post")
+def test_add_submission_file_resets_file_pointer_on_retry(mock_post: MagicMock) -> None:
+    """リトライ時にファイルポインタがリセットされることをテスト"""
+
+    # 最初の2回は5xxエラー、最後は成功
+    mock_responses = [
+        MagicMock(status_code=500, raise_for_status=MagicMock(side_effect=Exception("Server Error"))),
+        MagicMock(status_code=503, raise_for_status=MagicMock(side_effect=Exception("Service Unavailable"))),
+        MagicMock(status_code=200, json=MagicMock(return_value={"filename": "dataset.zip", "size": 1024}), raise_for_status=MagicMock())
+    ]
+    mock_post.side_effect = mock_responses
+
+    # 実際のファイルオブジェクトのように振る舞うモックを作成
+    file_content = b"zip file content for testing"
+    mock_file = Mock()
+    mock_file.name = "dataset.zip"
+    mock_file.type = "application/zip"
+    mock_file.read.return_value = file_content
+    mock_file.seek = Mock()  # seekメソッドをモック
+
+    result = streamlit_app.add_submission_file(
+        api_url="http://api:8010",
+        token="devtoken",
+        submission_id="sub-123",
+        file=mock_file,
+        max_retries=3
+    )
+
+    assert result == {"filename": "dataset.zip", "size": 1024}
+    assert mock_post.call_count == 3  # リトライされた
+
+    # 重要なポイント: seek(0)が3回呼ばれていることを確認（各試行の開始時）
+    assert mock_file.seek.call_count == 3
+    mock_file.seek.assert_has_calls([call(0)] * 3)  # 毎回 seek(0) が呼ばれている

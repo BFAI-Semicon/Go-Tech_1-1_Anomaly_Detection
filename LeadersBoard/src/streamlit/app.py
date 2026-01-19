@@ -127,6 +127,7 @@ def add_submission_file(
     headers = {"Authorization": f"Bearer {token}"}
 
     for attempt in range(max_retries):
+        file.seek(0)  # Reset file pointer to beginning for retry
         try:
             files_payload = {"file": (file.name, file, file.type)}
             response = requests.post(url, headers=headers, files=files_payload, timeout=30)
