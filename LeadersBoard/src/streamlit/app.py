@@ -129,7 +129,7 @@ def add_submission_file(
     for attempt in range(max_retries):
         file.seek(0)  # Reset file pointer to beginning for retry
         try:
-            files_payload = {"file": (file.name, file, file.type)}
+            files_payload = {"file": (file.name, file, file.type or "application/octet-stream")}
             response = requests.post(url, headers=headers, files=files_payload, timeout=30)
             response.raise_for_status()
             return response.json()
