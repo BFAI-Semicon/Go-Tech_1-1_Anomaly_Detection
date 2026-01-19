@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable, Generator
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -62,7 +63,7 @@ class IntegrationContext:
 
 
 @pytest.fixture
-def integration_context(tmp_path: Path) -> IntegrationContext:
+def integration_context(tmp_path: Path) -> Generator[IntegrationContext]:
     fake_redis = fakeredis.FakeRedis()
     submissions_root = tmp_path / "submissions"
     logs_root = tmp_path / "logs"
@@ -70,11 +71,11 @@ def integration_context(tmp_path: Path) -> IntegrationContext:
     storage = FileSystemStorageAdapter(submissions_root, logs_root=logs_root)
     queue_adapter = RedisJobQueueAdapter(fake_redis)
     status_adapter = RedisJobStatusAdapter(fake_redis)
-    rate_limit_adapter = RedisRateLimitAdapter(fake_redis)
+    rate_limit_adapter = RedisRateLimitAdapter(fake_redis, status_adapter)
     tracking_adapter = MockTrackingAdapter()
     job_worker = JobWorker(queue_adapter, status_adapter, storage, tracking_adapter, artifacts_root=artifacts_root)
 
-    overrides = {
+    overrides: dict[Callable[..., Any], Callable[..., Any]] = {
         submissions_module.get_storage: lambda: storage,
         jobs_module.get_storage: lambda: storage,
         submissions_module.get_current_user: lambda: "integration-user",

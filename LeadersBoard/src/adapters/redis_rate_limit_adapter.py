@@ -4,6 +4,7 @@ from typing import Any, Final, cast
 
 from redis import Redis
 
+from src.ports.job_status_port import JobStatusPort
 from src.ports.rate_limit_port import RateLimitPort
 
 
@@ -13,8 +14,9 @@ class RedisRateLimitAdapter(RateLimitPort):
     TTL_SECONDS: Final[int] = 3600
     KEY_PREFIX: Final[str] = "leaderboard:rate:"
 
-    def __init__(self, redis_client: Redis[Any], prefix: str | None = None) -> None:
+    def __init__(self, redis_client: Redis[Any], job_status: JobStatusPort, prefix: str | None = None) -> None:
         self.redis = redis_client
+        self.job_status = job_status
         self.key_prefix = prefix or self.KEY_PREFIX
 
     def _key(self, user_id: str) -> str:
@@ -65,8 +67,10 @@ class RedisRateLimitAdapter(RateLimitPort):
         return result == 1
 
     def try_increment_with_concurrency_check(
-        self, user_id: str, max_concurrency: int, max_rate: int, current_running: int
+        self, user_id: str, max_concurrency: int, max_rate: int
     ) -> bool:
+        # 実行中ジョブ数を最新の状態で取得（Luaスクリプト実行直前）
+        current_running = self.job_status.count_running(user_id)
         key = self._key(user_id)
 
         # Luaスクリプトでconcurrency limitとrate limitをアトミックにチェック＆インクリメント

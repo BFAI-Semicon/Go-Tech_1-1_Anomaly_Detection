@@ -36,18 +36,14 @@ class EnqueueJob:
         entrypoint = metadata.get("entrypoint", "main.py")
         config_file = metadata.get("config_file", "config.yaml")
 
-        running = self.status.count_running(user_id)
-
         # concurrency limitとrate limitをアトミックにチェック＆インクリメント
         increment_succeeded = False
         if not self.rate_limit.try_increment_with_concurrency_check(
-            user_id, self.max_concurrent_running, self.max_submissions_per_hour, running
+            user_id, self.max_concurrent_running, self.max_submissions_per_hour
         ):
-            # どちらの制限を超過したか判定（エラーメッセージ用）
-            if running >= self.max_concurrent_running:
-                raise ValueError("too many running jobs")
-            else:
-                raise ValueError("submission rate limit exceeded")
+            # 制限超過の詳細な原因はRateLimitAdapter内で判定されるため、
+            # ここでは一般的なエラーメッセージを返す
+            raise ValueError("rate limit or concurrency limit exceeded")
         increment_succeeded = True
 
         job_id = uuid.uuid4().hex

@@ -106,6 +106,7 @@ class DummyRateLimit(RateLimitPort):
         self.try_increment_calls: list[tuple[str, int]] = []
         self.try_increment_with_concurrency_calls: list[tuple[str, int, int, int]] = []
         self.decrement_calls: list[str] = []
+        self._status: DummyStatus | None = None  # テスト用にstatusを設定できるようにする
 
     def increment_submission(self, user_id: str) -> int:
         self.increment_calls.append(user_id)
@@ -124,8 +125,13 @@ class DummyRateLimit(RateLimitPort):
         return self.allow_increment
 
     def try_increment_with_concurrency_check(
-        self, user_id: str, max_concurrency: int, max_rate: int, current_running: int
+        self, user_id: str, max_concurrency: int, max_rate: int
     ) -> bool:
+        # テスト用に、設定されたstatusを使ってcount_running()を呼び出す
+        current_running = 0
+        if self._status:
+            current_running = self._status.count_running(user_id)
+
         self.try_increment_with_concurrency_calls.append((user_id, max_concurrency, max_rate, current_running))
         # テスト用にconcurrencyチェックとrate limitチェックの両方を考慮
         concurrency_ok = current_running < max_concurrency
@@ -138,6 +144,7 @@ def test_execute_enqueues_job() -> None:
     queue = DummyQueue()
     status = DummyStatus()
     limiter = DummyRateLimit()
+    limiter._status = status  # テスト用にstatusを設定
 
     use_case = EnqueueJob(storage, queue, status, limiter)
 
@@ -168,6 +175,7 @@ def test_rate_limit_exceeded() -> None:
     queue = DummyQueue()
     status = DummyStatus()
     limiter = DummyRateLimit(allow_increment=False)  # インクリメントを拒否
+    limiter._status = status  # テスト用にstatusを設定
 
     use_case = EnqueueJob(storage, queue, status, limiter)
 
@@ -185,10 +193,11 @@ def test_concurrency_limit_exceeded() -> None:
     queue = DummyQueue()
     status = DummyStatus(running=get_max_concurrent_running())
     limiter = DummyRateLimit()
+    limiter._status = status  # テスト用にstatusを設定
 
     use_case = EnqueueJob(storage, queue, status, limiter)
     with patch("pathlib.Path.exists", return_value=True):
-        with pytest.raises(ValueError, match="too many running jobs"):
+        with pytest.raises(ValueError, match="rate limit or concurrency limit exceeded"):
             use_case.execute("sub", "user", {})
 
 
@@ -197,6 +206,7 @@ def test_entrypoint_validation_fails() -> None:
     queue = DummyQueue()
     status = DummyStatus()
     limiter = DummyRateLimit()
+    limiter._status = status  # テスト用にstatusを設定
 
     use_case = EnqueueJob(storage, queue, status, limiter)
     with pytest.raises(ValueError, match="entrypoint file not found"):
@@ -212,6 +222,7 @@ def test_config_file_validation_fails() -> None:
     queue = DummyQueue()
     status = DummyStatus()
     limiter = DummyRateLimit()
+    limiter._status = status  # テスト用にstatusを設定
 
     use_case = EnqueueJob(storage, queue, status, limiter)
 
@@ -230,6 +241,7 @@ def test_validation_succeeds_when_files_exist() -> None:
     queue = DummyQueue()
     status = DummyStatus()
     limiter = DummyRateLimit()
+    limiter._status = status  # テスト用にstatusを設定
 
     use_case = EnqueueJob(storage, queue, status, limiter)
 
@@ -246,6 +258,7 @@ def test_status_create_failure_rolls_back_counter() -> None:
     queue = DummyQueue()
     status = DummyStatus(should_fail=True)  # create() で失敗する
     limiter = DummyRateLimit()
+    limiter._status = status  # テスト用にstatusを設定
 
     use_case = EnqueueJob(storage, queue, status, limiter)
 
@@ -263,6 +276,7 @@ def test_queue_enqueue_failure_rolls_back_counter() -> None:
     queue = DummyQueue(should_fail=True)  # enqueue() で失敗する
     status = DummyStatus()
     limiter = DummyRateLimit()
+    limiter._status = status  # テスト用にstatusを設定
 
     use_case = EnqueueJob(storage, queue, status, limiter)
 
@@ -287,6 +301,7 @@ def test_rate_limit_rolls_back_on_failure() -> None:
     queue = DummyQueue(should_fail=True)  # 常にenqueue()が失敗する
     status = DummyStatus()
     limiter = DummyRateLimit(next_value=0)  # カウンターは0から始まる
+    limiter._status = status  # テスト用にstatusを設定
 
     use_case = EnqueueJob(storage, queue, status, limiter)
 
@@ -319,6 +334,7 @@ def test_filesystem_exception_during_load_rolls_back_counter() -> None:
     queue = DummyQueue()
     status = DummyStatus()
     limiter = DummyRateLimit()
+    limiter._status = status  # テスト用にstatusを設定
 
     use_case = EnqueueJob(storage, queue, status, limiter)
 
@@ -338,6 +354,7 @@ def test_filesystem_exception_during_exists_rolls_back_counter() -> None:
     queue = DummyQueue()
     status = DummyStatus()
     limiter = DummyRateLimit()
+    limiter._status = status  # テスト用にstatusを設定
 
     use_case = EnqueueJob(storage, queue, status, limiter)
 
@@ -362,6 +379,7 @@ def test_unexpected_exception_during_load_rolls_back_counter() -> None:
     queue = DummyQueue()
     status = DummyStatus()
     limiter = DummyRateLimit()
+    limiter._status = status  # テスト用にstatusを設定
 
     use_case = EnqueueJob(storage, queue, status, limiter)
 
@@ -374,3 +392,125 @@ def test_unexpected_exception_during_load_rolls_back_counter() -> None:
     # try_increment_with_concurrency_check は呼ばれ、例外発生時に decrement_submission でロールバック
     assert len(limiter.try_increment_with_concurrency_calls) == 1  # try_increment_with_concurrency_check が1回呼ばれる
     assert len(limiter.decrement_calls) == 1  # decrement_submission が1回呼ばれる（ロールバック）
+
+
+def test_race_condition_prevention_with_sequential_requests() -> None:
+    """連続したリクエストで同時実行制限が正しく機能することを確認
+
+    レースコンディションを完全に再現するのは難しいため、
+    状態の変化をシミュレートして制限が正しく機能することを確認する。
+    """
+    from unittest.mock import patch
+
+    # 同時実行数を1に制限
+    max_concurrent = 1
+
+    # ジョブ状態を管理するクラス
+    class TestStatus(JobStatusPort):
+        """テスト用のジョブ状態管理"""
+        def __init__(self):
+            self.jobs: dict[str, dict[str, Any]] = {}
+
+        def create(self, job_id: str, submission_id: str, user_id: str) -> None:
+            self.jobs[job_id] = {
+                "job_id": job_id,
+                "submission_id": submission_id,
+                "user_id": user_id,
+                "status": JobStatus.PENDING.value,
+                "created_at": "2024-01-01T00:00:00",
+                "updated_at": "2024-01-01T00:00:00",
+            }
+
+        def update(self, job_id: str, status: JobStatus, **kwargs: Any) -> None:
+            if job_id in self.jobs:
+                self.jobs[job_id]["status"] = status.value
+                self.jobs[job_id]["updated_at"] = "2024-01-01T00:00:01"
+                self.jobs[job_id].update(kwargs)
+
+        def get_status(self, job_id: str) -> dict[str, Any] | None:
+            return self.jobs.get(job_id)
+
+        def count_running(self, user_id: str) -> int:
+            return sum(1 for job in self.jobs.values()
+                      if job["user_id"] == user_id and job["status"] == JobStatus.RUNNING.value)
+
+    # レート制限を管理するクラス
+    class TestRateLimit(RateLimitPort):
+        """テスト用のレート制限管理"""
+        def __init__(self, status_port: TestStatus):
+            self.submissions: dict[str, int] = {}
+            self.status = status_port
+
+        def increment_submission(self, user_id: str) -> int:
+            self.submissions[user_id] = self.submissions.get(user_id, 0) + 1
+            return self.submissions[user_id]
+
+        def get_submission_count(self, user_id: str) -> int:
+            return self.submissions.get(user_id, 0)
+
+        def decrement_submission(self, user_id: str) -> int:
+            self.submissions[user_id] = self.submissions.get(user_id, 1) - 1
+            return self.submissions[user_id]
+
+        def try_increment_submission(self, user_id: str, max_count: int) -> bool:
+            current = self.submissions.get(user_id, 0)
+            if current >= max_count:
+                return False
+            self.submissions[user_id] = current + 1
+            return True
+
+        def try_increment_with_concurrency_check(self, user_id: str, max_concurrency: int, max_rate: int) -> bool:
+            # 同時実行数をチェック（最新の状態で確認）
+            current_running = self.status.count_running(user_id)
+            if current_running >= max_concurrency:
+                return False
+
+            # レート制限をチェック
+            current_rate = self.submissions.get(user_id, 0)
+            if current_rate >= max_rate:
+                return False
+
+            # 両方の制限を満たしていればレートカウンターをインクリメント
+            self.submissions[user_id] = current_rate + 1
+            return True
+
+    # テストの実行
+    status = TestStatus()
+    limiter = TestRateLimit(status)
+    storage = DummyStorage()
+    queue = DummyQueue()
+
+    results = []
+    errors = []
+
+    # レート制限を緩く設定（事実上無制限）
+    max_rate_per_hour = 1000  # 1時間あたり1000回まで許可
+
+    # 3つのジョブを順番に投入しようとする
+    for _ in range(3):
+        try:
+            use_case = EnqueueJob(storage, queue, status, limiter)
+            # 同時実行制限を1に、レート制限を緩く設定
+            use_case.max_concurrent_running = max_concurrent
+            use_case.max_submissions_per_hour = max_rate_per_hour
+
+            with patch.object(Path, 'exists', return_value=True):
+                job_id = use_case.execute("sub", "user", {"lr": 0.01})
+                # ジョブをRUNNING状態に変更（実際のワーカー動作をシミュレート）
+                status.update(job_id, JobStatus.RUNNING)
+                results.append(job_id)
+        except ValueError as e:
+            errors.append(str(e))
+
+    # 結果の検証
+    # 同時実行制限が1なので、1つのジョブのみ成功し、2つは制限超過になるはず
+    assert len(results) == 1, f"1つのジョブのみ成功すべきだが、{len(results)}個成功した"
+    assert len(errors) == 2, f"2つのジョブが制限超過になるべきだが、{len(errors)}個のエラーが発生"
+
+    # エラーメッセージを確認
+    for error_msg in errors:
+        assert "rate limit or concurrency limit exceeded" in error_msg
+
+    # 最終的な実行中ジョブ数を確認（1つだけRUNNING状態のはず）
+    final_running = status.count_running("user")
+    assert final_running == 1, f"最終的な実行中ジョブ数は1であるべきだが、{final_running}個ある"
