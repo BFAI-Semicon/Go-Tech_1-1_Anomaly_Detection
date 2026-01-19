@@ -145,6 +145,99 @@ def test_create_submission_requires_auth() -> None:
     assert response.status_code == 401
 
 
+def test_create_submission_single_file() -> None:
+    """単一ファイルでのsubmission作成をテスト"""
+    dummy_submission = DummyCreateSubmission()
+    override_create_submission(dummy_submission)
+    override_current_user()
+
+    response = test_client.post(
+        "/submissions",
+        headers={"Authorization": "Bearer devtoken"},
+        files={"files": ("main.py", io.BytesIO(b"print('hello')"), "text/plain")},
+        data={"metadata": json.dumps({"method": "test"})},
+    )
+
+    assert response.status_code == 201
+    assert response.json()["submission_id"] == "submission-123"
+
+    # デフォルト値が使用されていることを確認
+    assert len(dummy_submission.calls) == 1
+    call = dummy_submission.calls[0]
+    assert call["entrypoint"] == "main.py"  # デフォルト値
+    assert call["config_file"] == "config.yaml"  # デフォルト値
+
+
+def test_create_submission_single_file_validation() -> None:
+    """単一ファイルの場合、entrypointまたはconfig_fileとして適切なファイルを検証することをテスト"""
+    dummy_submission = DummyCreateSubmissionWithError()
+    override_create_submission(dummy_submission)
+    override_current_user()
+
+    # 単一ファイルでentrypointと一致しない場合 - エラーが発生するはず
+    response = test_client.post(
+        "/submissions",
+        headers={"Authorization": "Bearer devtoken"},
+        files={"files": ("dataset.zip", io.BytesIO(b"zip content"), "application/zip")},
+        data={"entrypoint": "main.py"},  # entrypointはmain.pyだが、ファイルはdataset.zip
+    )
+
+    assert response.status_code == 400
+
+
+def test_create_submission_single_file_with_explicit_params() -> None:
+    """単一ファイルで明示的なパラメータ指定でのsubmission作成をテスト"""
+    dummy_submission = DummyCreateSubmission()
+    override_create_submission(dummy_submission)
+    override_current_user()
+
+    response = test_client.post(
+        "/submissions",
+        headers={"Authorization": "Bearer devtoken"},
+        files={"files": ("custom.py", io.BytesIO(b"print('custom')"), "text/plain")},
+        data={
+            "entrypoint": "custom.py",
+            "config_file": "custom.yaml",
+            "metadata": json.dumps({"method": "custom"})
+        },
+    )
+
+    assert response.status_code == 201
+    assert response.json()["submission_id"] == "submission-123"
+
+    # 明示的に指定した値が使用されていることを確認
+    assert len(dummy_submission.calls) == 1
+    call = dummy_submission.calls[0]
+    assert call["entrypoint"] == "custom.py"
+    assert call["config_file"] == "custom.yaml"
+
+
+def test_create_submission_multiple_files_compatibility() -> None:
+    """複数ファイルの一括アップロードとの互換性をテスト"""
+    dummy_submission = DummyCreateSubmission()
+    override_create_submission(dummy_submission)
+    override_current_user()
+
+    response = test_client.post(
+        "/submissions",
+        headers={"Authorization": "Bearer devtoken"},
+        files=[
+            ("files", ("main.py", io.BytesIO(b"print('main')"), "text/plain")),
+            ("files", ("config.yaml", io.BytesIO(b"method: test"), "text/yaml")),
+        ],
+        data={"metadata": json.dumps({"method": "batch"})},
+    )
+
+    assert response.status_code == 201
+    assert response.json()["submission_id"] == "submission-123"
+
+    # 既存の複数ファイル処理が維持されていることを確認
+    assert len(dummy_submission.calls) == 1
+    call = dummy_submission.calls[0]
+    assert call["entrypoint"] == "main.py"
+    assert call["config_file"] == "config.yaml"
+
+
 def test_add_submission_file_success() -> None:
     dummy_add_file = DummyAddSubmissionFile()
     override_add_submission_file(dummy_add_file)

@@ -39,7 +39,7 @@
   - 既存の実装との互換性を維持
   - _Requirements: 1.1, 8.1_
 
-- [ ] 4. API層拡張の実装
+- [x] 4. API層拡張の実装
 - [x] 4.1 POST /submissions/{submission_id}/files エンドポイントの実装
   - ファイルアップロードとAddSubmissionFileユースケースの統合
   - 認証・バリデーション・エラーハンドリングを実装
@@ -52,7 +52,7 @@
   - ファイル一覧とメタデータのJSONレスポンス返却
   - _Requirements: 8.1, 8.2, 8.3, 8.4_
 
-- [ ] 4.3 POST /submissions エンドポイントの拡張
+- [x] 4.3 POST /submissions エンドポイントの拡張
   - 単一ファイルでのsubmission作成に対応
   - entrypoint・config_fileのデフォルト値設定を追加
   - 既存の一括アップロードとの互換性を維持
