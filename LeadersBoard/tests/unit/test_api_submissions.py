@@ -304,7 +304,10 @@ class DummyGetSubmissionFiles:
     def execute(self, submission_id: str, user_id: str) -> list[dict[str, Any]]:
         self.calls.append((submission_id, user_id))
         if self.should_fail:
-            raise ValueError("submission not found" if submission_id == "nonexistent" else "permission denied")
+            if submission_id == "nonexistent":
+                raise ValueError(f"submission {submission_id} does not exist")
+            else:
+                raise ValueError(f"user {user_id} does not own submission {submission_id}")
         return self.files
 
 

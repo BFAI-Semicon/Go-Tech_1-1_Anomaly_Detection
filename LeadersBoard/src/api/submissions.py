@@ -175,9 +175,9 @@ async def get_submission_files(
         return {"files": files}
     except ValueError as exc:
         error_message = str(exc)
-        if "not found" in error_message:
+        if "does not exist" in error_message:
             raise HTTPException(status_code=404, detail=error_message) from exc
-        elif "permission" in error_message or "denied" in error_message:
+        elif "does not own" in error_message:
             raise HTTPException(status_code=403, detail="access denied") from exc
         else:
             raise HTTPException(status_code=400, detail=error_message) from exc
