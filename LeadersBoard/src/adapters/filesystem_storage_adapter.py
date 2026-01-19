@@ -150,18 +150,19 @@ class FileSystemStorageAdapter(StoragePort):
     ) -> None:
         temp_path: Path | None = None
         transaction_success = False
-        file_written = False
+        file_moved = False
         try:
             temp_path = self._prepare_temp_file(file_data, submission_dir)
             temp_path.replace(target_path)
-            file_written = True
+            file_moved = True
 
             metadata.setdefault("files", []).append(filename)
             self._overwrite_metadata(metadata_file, metadata)
             transaction_success = True
         finally:
             self._cleanup_temp_file(temp_path)
-            if not transaction_success and file_written and target_path.exists():
+            # ファイル移動が失敗した場合のみクリーンアップ（メタデータ書き込み失敗時はファイルを保持）
+            if not transaction_success and not file_moved and target_path.exists():
                 self._remove_target_file(target_path)
 
     def _prepare_temp_file(self, data: bytes, submission_dir: Path) -> Path:
