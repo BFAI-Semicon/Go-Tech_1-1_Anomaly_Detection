@@ -37,13 +37,17 @@ class EnqueueJob:
         config_file = metadata.get("config_file", "config.yaml")
 
         running = self.status.count_running(user_id)
-        if running >= self.max_concurrent_running:
-            raise ValueError("too many running jobs")
 
-        # レート制限チェック（アトミックなチェック＆インクリメント）
+        # concurrency limitとrate limitをアトミックにチェック＆インクリメント
         increment_succeeded = False
-        if not self.rate_limit.try_increment_submission(user_id, self.max_submissions_per_hour):
-            raise ValueError("submission rate limit exceeded")
+        if not self.rate_limit.try_increment_with_concurrency_check(
+            user_id, self.max_concurrent_running, self.max_submissions_per_hour, running
+        ):
+            # どちらの制限を超過したか判定（エラーメッセージ用）
+            if running >= self.max_concurrent_running:
+                raise ValueError("too many running jobs")
+            else:
+                raise ValueError("submission rate limit exceeded")
         increment_succeeded = True
 
         # 完全性検証: entrypointファイルの存在確認

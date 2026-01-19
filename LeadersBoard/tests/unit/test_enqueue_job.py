@@ -104,6 +104,7 @@ class DummyRateLimit(RateLimitPort):
         self.calls: list[str] = []
         self.increment_calls: list[str] = []
         self.try_increment_calls: list[tuple[str, int]] = []
+        self.try_increment_with_concurrency_calls: list[tuple[str, int, int, int]] = []
         self.decrement_calls: list[str] = []
 
     def increment_submission(self, user_id: str) -> int:
@@ -122,6 +123,15 @@ class DummyRateLimit(RateLimitPort):
         self.try_increment_calls.append((user_id, max_count))
         return self.allow_increment
 
+    def try_increment_with_concurrency_check(
+        self, user_id: str, max_concurrency: int, max_rate: int, current_running: int
+    ) -> bool:
+        self.try_increment_with_concurrency_calls.append((user_id, max_concurrency, max_rate, current_running))
+        # テスト用にconcurrencyチェックとrate limitチェックの両方を考慮
+        concurrency_ok = current_running < max_concurrency
+        rate_ok = self.allow_increment
+        return concurrency_ok and rate_ok
+
 
 def test_execute_enqueues_job() -> None:
     storage = DummyStorage()
@@ -135,11 +145,11 @@ def test_execute_enqueues_job() -> None:
     with patch.object(Path, 'exists', return_value=True):
         job_id = use_case.execute("sub", "user", {"lr": 0.01})
 
-    assert job_id
-    assert len(queue.jobs) == 1
-    assert status.created
-    # アトミックなチェック＆インクリメントが呼ばれることを確認
-    assert len(limiter.try_increment_calls) == 1  # try_increment_submission が1回呼ばれる
+        assert job_id
+        assert len(queue.jobs) == 1
+        assert status.created
+        # アトミックなチェック＆インクリメントが呼ばれることを確認
+        assert len(limiter.try_increment_with_concurrency_calls) == 1  # try_increment_with_concurrency_check が1回呼ばれる
 
 
 def test_submission_must_exist() -> None:
@@ -166,8 +176,8 @@ def test_rate_limit_exceeded() -> None:
         with pytest.raises(ValueError):
             use_case.execute("sub", "user", {})
 
-    # レート制限チェックで try_increment_submission が呼ばれ、失敗することを確認
-    assert len(limiter.try_increment_calls) == 1  # try_increment_submission が1回呼ばれる
+        # concurrencyチェックで try_increment_with_concurrency_check が呼ばれ、失敗することを確認
+        assert len(limiter.try_increment_with_concurrency_calls) == 1  # try_increment_with_concurrency_check が1回呼ばれる
 
 
 def test_concurrency_limit_exceeded() -> None:
@@ -192,8 +202,8 @@ def test_entrypoint_validation_fails() -> None:
     with pytest.raises(ValueError, match="entrypoint file not found"):
         use_case.execute("sub", "user", {})
 
-    # try_increment_submission は呼ばれ、検証失敗時に decrement_submission でロールバック
-    assert len(limiter.try_increment_calls) == 1  # try_increment_submission が1回呼ばれる
+        # try_increment_with_concurrency_check は呼ばれ、検証失敗時に decrement_submission でロールバック
+        assert len(limiter.try_increment_with_concurrency_calls) == 1  # try_increment_with_concurrency_check が1回呼ばれる
     assert len(limiter.decrement_calls) == 1  # decrement_submission が1回呼ばれる（ロールバック）
 
 
@@ -210,8 +220,8 @@ def test_config_file_validation_fails() -> None:
         with pytest.raises(ValueError, match="config file not found"):
             use_case.execute("sub", "user", {})
 
-    # try_increment_submission は呼ばれ、検証失敗時に decrement_submission でロールバック
-    assert len(limiter.try_increment_calls) == 1  # try_increment_submission が1回呼ばれる
+        # try_increment_with_concurrency_check は呼ばれ、検証失敗時に decrement_submission でロールバック
+        assert len(limiter.try_increment_with_concurrency_calls) == 1  # try_increment_with_concurrency_check が1回呼ばれる
     assert len(limiter.decrement_calls) == 1  # decrement_submission が1回呼ばれる（ロールバック）
 
 
@@ -243,8 +253,8 @@ def test_status_create_failure_rolls_back_counter() -> None:
         with pytest.raises(RuntimeError, match="Status create failed"):
             use_case.execute("sub", "user", {"lr": 0.01})
 
-    # try_increment_submission は呼ばれ、失敗時に decrement_submission でロールバックされる
-    assert len(limiter.try_increment_calls) == 1  # try_increment_submission が1回呼ばれる
+        # try_increment_with_concurrency_check は呼ばれ、失敗時に decrement_submission でロールバックされる
+        assert len(limiter.try_increment_with_concurrency_calls) == 1  # try_increment_with_concurrency_check が1回呼ばれる
     assert len(limiter.decrement_calls) == 1  # decrement_submission が1回呼ばれる（ロールバック）
 
 
@@ -260,8 +270,8 @@ def test_queue_enqueue_failure_rolls_back_counter() -> None:
         with pytest.raises(RuntimeError, match="Queue enqueue failed"):
             use_case.execute("sub", "user", {"lr": 0.01})
 
-    # try_increment_submission は呼ばれ、失敗時に decrement_submission でロールバックされる
-    assert len(limiter.try_increment_calls) == 1  # try_increment_submission が1回呼ばれる
+        # try_increment_with_concurrency_check は呼ばれ、失敗時に decrement_submission でロールバックされる
+        assert len(limiter.try_increment_with_concurrency_calls) == 1  # try_increment_with_concurrency_check が1回呼ばれる
     assert len(limiter.decrement_calls) == 1  # decrement_submission が1回呼ばれる（ロールバック）
 
     # queue.enqueue() が失敗した場合、ジョブステータスが FAILED に更新されることを確認
@@ -285,8 +295,8 @@ def test_rate_limit_rolls_back_on_failure() -> None:
         with pytest.raises(RuntimeError, match="Queue enqueue failed"):
             use_case.execute("sub1", "user", {"lr": 0.01})
 
-    # try_increment と decrement が両方呼ばれることを確認
-    assert len(limiter.try_increment_calls) == 1
+        # try_increment_with_concurrency_check と decrement が両方呼ばれることを確認
+        assert len(limiter.try_increment_with_concurrency_calls) == 1
     assert len(limiter.decrement_calls) == 1
 
     # カウンターは元に戻っているので、次回の試行は可能
@@ -299,7 +309,7 @@ def test_rate_limit_rolls_back_on_failure() -> None:
         with pytest.raises(RuntimeError, match="Queue enqueue failed"):
             use_case2.execute("sub2", "user", {"lr": 0.01})
 
-    assert len(limiter2.try_increment_calls) == 1
+        assert len(limiter2.try_increment_with_concurrency_calls) == 1
     assert len(limiter2.decrement_calls) == 1
 
 
@@ -317,8 +327,8 @@ def test_filesystem_exception_during_load_rolls_back_counter() -> None:
         with pytest.raises(PermissionError, match="Permission denied"):
             use_case.execute("sub", "user", {})
 
-    # try_increment_submission は呼ばれ、例外発生時に decrement_submission でロールバック
-    assert len(limiter.try_increment_calls) == 1  # try_increment_submission が1回呼ばれる
+    # try_increment_with_concurrency_check は呼ばれ、例外発生時に decrement_submission でロールバック
+    assert len(limiter.try_increment_with_concurrency_calls) == 1  # try_increment_with_concurrency_check が1回呼ばれる
     assert len(limiter.decrement_calls) == 1  # decrement_submission が1回呼ばれる（ロールバック）
 
 
@@ -336,8 +346,8 @@ def test_filesystem_exception_during_exists_rolls_back_counter() -> None:
         with pytest.raises(PermissionError, match="Permission denied"):
             use_case.execute("sub", "user", {})
 
-    # try_increment_submission は呼ばれ、例外発生時に decrement_submission でロールバック
-    assert len(limiter.try_increment_calls) == 1  # try_increment_submission が1回呼ばれる
+    # try_increment_with_concurrency_check は呼ばれ、例外発生時に decrement_submission でロールバック
+    assert len(limiter.try_increment_with_concurrency_calls) == 1  # try_increment_with_concurrency_check が1回呼ばれる
     assert len(limiter.decrement_calls) == 1  # decrement_submission が1回呼ばれる（ロールバック）
 
 
@@ -361,6 +371,6 @@ def test_unexpected_exception_during_load_rolls_back_counter() -> None:
         with pytest.raises(RuntimeError, match="Unexpected storage error"):
             use_case.execute("sub", "user", {})
 
-    # try_increment_submission は呼ばれ、例外発生時に decrement_submission でロールバック
-    assert len(limiter.try_increment_calls) == 1  # try_increment_submission が1回呼ばれる
+    # try_increment_with_concurrency_check は呼ばれ、例外発生時に decrement_submission でロールバック
+    assert len(limiter.try_increment_with_concurrency_calls) == 1  # try_increment_with_concurrency_check が1回呼ばれる
     assert len(limiter.decrement_calls) == 1  # decrement_submission が1回呼ばれる（ロールバック）

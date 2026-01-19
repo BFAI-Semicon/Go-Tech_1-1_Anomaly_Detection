@@ -63,3 +63,40 @@ class RedisRateLimitAdapter(RateLimitPort):
 
         result = cast(int, self.redis.eval(script, 1, key, max_count, self.TTL_SECONDS))  # type: ignore[no-untyped-call]
         return result == 1
+
+    def try_increment_with_concurrency_check(
+        self, user_id: str, max_concurrency: int, max_rate: int, current_running: int
+    ) -> bool:
+        key = self._key(user_id)
+
+        # Luaスクリプトでconcurrency limitとrate limitをアトミックにチェック＆インクリメント
+        # KEYS[1]: カウンターキー
+        # ARGV[1]: max_concurrency (同時実行数制限)
+        # ARGV[2]: max_rate (レート制限)
+        # ARGV[3]: current_running (現在の実行中ジョブ数)
+        # ARGV[4]: TTL
+        script = """
+        local current_running = tonumber(ARGV[3])
+        if current_running >= tonumber(ARGV[1]) then
+            return 0  -- concurrency limit exceeded
+        end
+
+        local rate_count = redis.call('GET', KEYS[1])
+        if not rate_count then
+            rate_count = 0
+        else
+            rate_count = tonumber(rate_count)
+        end
+
+        if rate_count >= tonumber(ARGV[2]) then
+            return 0  -- rate limit exceeded
+        end
+
+        -- 両方の制限を満たしているのでrate limitカウンターをインクリメント
+        local new_value = redis.call('INCR', KEYS[1])
+        redis.call('EXPIRE', KEYS[1], ARGV[4])
+        return 1  -- success
+        """
+
+        result = cast(int, self.redis.eval(script, 1, key, max_concurrency, max_rate, current_running, self.TTL_SECONDS))  # type: ignore[no-untyped-call]
+        return result == 1

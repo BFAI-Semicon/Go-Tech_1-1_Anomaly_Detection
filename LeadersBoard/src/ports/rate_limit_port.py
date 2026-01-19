@@ -27,3 +27,21 @@ class RateLimitPort(ABC):
         max_count 以上の場合はインクリメントせず、Falseを返す。
         """
         ...
+
+    @abstractmethod
+    def try_increment_with_concurrency_check(
+        self, user_id: str, max_concurrency: int, max_rate: int, current_running: int
+    ) -> bool:
+        """concurrency limitとrate limitをアトミックにチェック＆インクリメント
+
+        Args:
+            user_id: ユーザーID
+            max_concurrency: 最大同時実行数
+            max_rate: 1時間あたりの最大提出数
+            current_running: 現在の実行中ジョブ数
+
+        Returns:
+            True: 両方の制限を満たしており、rate limitカウンターをインクリメントした
+            False: いずれかの制限を超過しているためインクリメントしなかった
+        """
+        ...
