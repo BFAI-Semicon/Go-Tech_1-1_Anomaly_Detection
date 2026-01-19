@@ -51,9 +51,16 @@ class EnqueueJob:
             raise ValueError(f"entrypoint file not found: {entrypoint}")
 
         # 完全性検証: config_fileの存在確認
-        submission_dir = self.storage.load(submission_id)
-        config_path = Path(submission_dir) / config_file
-        if not config_path.exists():
+        try:
+            submission_dir = self.storage.load(submission_id)
+            config_path = Path(submission_dir) / config_file
+            file_exists = config_path.exists()
+        except (OSError, PermissionError):
+            # ファイルシステム操作中の例外時もカウンターをロールバック
+            self.rate_limit.decrement_submission(user_id)
+            raise
+
+        if not file_exists:
             # 検証失敗時はカウンターをロールバック
             self.rate_limit.decrement_submission(user_id)
             raise ValueError(f"config file not found: {config_file}")

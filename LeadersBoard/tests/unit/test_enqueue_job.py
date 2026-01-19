@@ -301,3 +301,41 @@ def test_rate_limit_rolls_back_on_failure() -> None:
 
     assert len(limiter2.try_increment_calls) == 1
     assert len(limiter2.decrement_calls) == 1
+
+
+def test_filesystem_exception_during_load_rolls_back_counter() -> None:
+    """storage.load() でファイルシステム例外が発生した場合のロールバックを確認"""
+    storage = DummyStorage()
+    queue = DummyQueue()
+    status = DummyStatus()
+    limiter = DummyRateLimit()
+
+    use_case = EnqueueJob(storage, queue, status, limiter)
+
+    # storage.load() が PermissionError を投げるようにモック
+    with patch.object(storage, 'load', side_effect=PermissionError("Permission denied")):
+        with pytest.raises(PermissionError, match="Permission denied"):
+            use_case.execute("sub", "user", {})
+
+    # try_increment_submission は呼ばれ、例外発生時に decrement_submission でロールバック
+    assert len(limiter.try_increment_calls) == 1  # try_increment_submission が1回呼ばれる
+    assert len(limiter.decrement_calls) == 1  # decrement_submission が1回呼ばれる（ロールバック）
+
+
+def test_filesystem_exception_during_exists_rolls_back_counter() -> None:
+    """Path.exists() でファイルシステム例外が発生した場合のロールバックを確認"""
+    storage = DummyStorage()
+    queue = DummyQueue()
+    status = DummyStatus()
+    limiter = DummyRateLimit()
+
+    use_case = EnqueueJob(storage, queue, status, limiter)
+
+    # Path.exists() が PermissionError を投げるようにモック
+    with patch.object(Path, 'exists', side_effect=PermissionError("Permission denied")):
+        with pytest.raises(PermissionError, match="Permission denied"):
+            use_case.execute("sub", "user", {})
+
+    # try_increment_submission は呼ばれ、例外発生時に decrement_submission でロールバック
+    assert len(limiter.try_increment_calls) == 1  # try_increment_submission が1回呼ばれる
+    assert len(limiter.decrement_calls) == 1  # decrement_submission が1回呼ばれる（ロールバック）
