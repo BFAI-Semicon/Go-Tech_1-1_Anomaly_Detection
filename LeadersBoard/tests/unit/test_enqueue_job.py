@@ -339,3 +339,28 @@ def test_filesystem_exception_during_exists_rolls_back_counter() -> None:
     # try_increment_submission は呼ばれ、例外発生時に decrement_submission でロールバック
     assert len(limiter.try_increment_calls) == 1  # try_increment_submission が1回呼ばれる
     assert len(limiter.decrement_calls) == 1  # decrement_submission が1回呼ばれる（ロールバック）
+
+
+def test_unexpected_exception_during_load_rolls_back_counter() -> None:
+    """storage.load() で (OSError, PermissionError) 以外の例外が発生した場合のロールバックを確認
+
+    このテストは increment_succeeded 変数の初期化バグを防ぐためのもの。
+    storage.load() が RuntimeError などの予期せぬ例外を投げた場合、
+    外側の except ハンドラーで increment_succeeded が適切に定義されていることを確認。
+    """
+    storage = DummyStorage()
+    queue = DummyQueue()
+    status = DummyStatus()
+    limiter = DummyRateLimit()
+
+    use_case = EnqueueJob(storage, queue, status, limiter)
+
+    # storage.load() が RuntimeError を投げるようにモック
+    # これは (OSError, PermissionError) 以外で、increment_succeeded 未定義のバグを再現する
+    with patch.object(storage, 'load', side_effect=RuntimeError("Unexpected storage error")):
+        with pytest.raises(RuntimeError, match="Unexpected storage error"):
+            use_case.execute("sub", "user", {})
+
+    # try_increment_submission は呼ばれ、例外発生時に decrement_submission でロールバック
+    assert len(limiter.try_increment_calls) == 1  # try_increment_submission が1回呼ばれる
+    assert len(limiter.decrement_calls) == 1  # decrement_submission が1回呼ばれる（ロールバック）

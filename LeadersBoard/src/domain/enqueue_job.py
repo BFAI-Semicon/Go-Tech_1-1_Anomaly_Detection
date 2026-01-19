@@ -41,8 +41,10 @@ class EnqueueJob:
             raise ValueError("too many running jobs")
 
         # レート制限チェック（アトミックなチェック＆インクリメント）
+        increment_succeeded = False
         if not self.rate_limit.try_increment_submission(user_id, self.max_submissions_per_hour):
             raise ValueError("submission rate limit exceeded")
+        increment_succeeded = True
 
         # 完全性検証: entrypointファイルの存在確認
         if not self.storage.validate_entrypoint(submission_id, entrypoint):
@@ -59,13 +61,16 @@ class EnqueueJob:
             # ファイルシステム操作中の例外時もカウンターをロールバック
             self.rate_limit.decrement_submission(user_id)
             raise
+        except Exception:
+            # その他の予期せぬ例外でもカウンターをロールバック
+            if increment_succeeded:
+                self.rate_limit.decrement_submission(user_id)
+            raise
 
         if not file_exists:
             # 検証失敗時はカウンターをロールバック
             self.rate_limit.decrement_submission(user_id)
             raise ValueError(f"config file not found: {config_file}")
-
-        increment_succeeded = True
 
         job_id = uuid.uuid4().hex
         try:
