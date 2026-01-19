@@ -8,6 +8,7 @@ from typing import BinaryIO, cast
 from fastapi import APIRouter, Depends, File, Form, Header, HTTPException, UploadFile
 
 from src.adapters.filesystem_storage_adapter import FileSystemStorageAdapter
+from src.domain.add_submission_file import AddSubmissionFile
 from src.domain.create_submission import CreateSubmission
 from src.ports.storage_port import StoragePort
 
@@ -51,6 +52,10 @@ def get_create_submission(storage: StoragePort = get_storage_dep) -> CreateSubmi
     return CreateSubmission(storage)
 
 
+def get_add_submission_file(storage: StoragePort = get_storage_dep) -> AddSubmissionFile:
+    return AddSubmissionFile(storage)
+
+
 def get_current_user(authorization: str | None = Header(None)) -> str:
     token_prefix = "Bearer "
     tokens = [token.strip() for token in os.getenv("API_TOKENS", "").split(",") if token.strip()]
@@ -70,6 +75,8 @@ config_file_dep = Form("config.yaml")
 metadata_dep = Form("{}")
 current_user_dep = Depends(get_current_user)
 create_submission_dep = Depends(get_create_submission)
+add_submission_file_dep = Depends(get_add_submission_file)
+file_dep = File(...)
 
 
 @router.post("/submissions", status_code=201)
@@ -99,3 +106,39 @@ async def create_submission(
             await file.close()
 
     return {"submission_id": submission_id, "user_id": user_id}
+
+
+@router.post("/submissions/{submission_id}/files", status_code=201)
+async def add_submission_file(
+    submission_id: str,
+    file: UploadFile = file_dep,
+    user_id: str = current_user_dep,
+    add_submission_file_use_case: AddSubmissionFile = add_submission_file_dep,
+) -> dict[str, str | int]:
+    """
+    既存のsubmissionにファイルを追加する。
+
+    Args:
+        submission_id: 既存のsubmission ID
+        file: 追加するファイル
+        user_id: 認証済みユーザーID
+
+    Returns:
+        {"filename": str, "size": int}
+
+    Raises:
+        HTTPException: 認証失敗、submission不存在、ファイル検証失敗
+    """
+    filename = file.filename
+    if not filename:
+        raise HTTPException(status_code=400, detail="filename is required")
+
+    try:
+        result = add_submission_file_use_case.execute(
+            submission_id, file.file, filename, user_id
+        )
+        return result
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    finally:
+        await file.close()

@@ -40,7 +40,7 @@
   - _Requirements: 1.1, 8.1_
 
 - [ ] 4. API層拡張の実装
-- [ ] 4.1 POST /submissions/{submission_id}/files エンドポイントの実装
+- [x] 4.1 POST /submissions/{submission_id}/files エンドポイントの実装
   - ファイルアップロードとAddSubmissionFileユースケースの統合
   - 認証・バリデーション・エラーハンドリングを実装
   - レスポンス形式の統一（ファイル名・サイズ返却）
