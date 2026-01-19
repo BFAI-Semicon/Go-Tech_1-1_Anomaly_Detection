@@ -15,7 +15,7 @@
 ## Core Technologies
 
 - **Language**: Python 3.13
-- **API Framework**: FastAPI（提出受付、ジョブ投入、状態取得）
+- **API Framework**: FastAPI（提出受付、ジョブ投入、状態取得、ファイル管理）
 - **Queue**: Redis（非同期ジョブ投入、at-least-once配信）
 - **Worker**: GPUコンテナ（nvidia-container-runtime、anomalib学習・評価）
 - **Experiment Tracking**: MLflow Tracking Server（パラメータ・メトリクス・アーティファクト記録）
@@ -283,5 +283,5 @@ render_jobs_with_auto_refresh = st.fragment(run_every="5s")(_render_jobs)
 
 ## Maintenance
 
-- updated_at: 2026-01-13
-- reason: スペルチェッカー・設定管理パターン・テストカバレッジ同期の追加
+- updated_at: 2026-01-19
+- reason: 順次ファイルアップロード機能のAPIエンドポイント追加

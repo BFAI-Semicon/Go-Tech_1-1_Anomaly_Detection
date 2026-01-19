@@ -10,7 +10,7 @@ Clean-lite設計（ドメイン/ポート/アダプタ）を採用し、ドメ�
 
 **Location**: `/src/domain/`  
 **Purpose**: ビジネスロジック・ユースケース（外部実装に非依存）  
-**Example**: `CreateSubmission`, `EnqueueJob`, `GetJobStatus`, `GetResults`
+**Example**: `CreateSubmission`, `AddSubmissionFile`, `GetSubmissionFiles`, `EnqueueJob`, `GetJobStatus`, `GetResults`
 
 ### ポート層（抽象インタフェース）
 
@@ -18,7 +18,7 @@ Clean-lite設計（ドメイン/ポート/アダプタ）を採用し、ドメ�
 **Purpose**: ドメインが依存する抽象インタフェース  
 **Example**:
 
-- `StoragePort`: 提出ファイル保存/参照
+- `StoragePort`: 提出ファイル保存/参照/追加/一覧取得
 - `JobQueuePort`: ジョブ投入/取り出し
 - `JobStatusPort`: 状態の保存/参照
 - `TrackingPort`: メトリクス記録・`run_id` 生成（Workerのみ使用）
@@ -58,7 +58,9 @@ API 側で Redis カウンター（`leaderboard:rate:{user_id}`）を参照し�
 **Purpose**: REST API エンドポイント、認証、バリデーション、レート制限  
 **Example**:
 
-- `POST /submissions`: 提出受付
+- `POST /submissions`: 提出受付（単一ファイル or 一括アップロード）
+- `POST /submissions/{id}/files`: 既存submissionへの個別ファイル追加
+- `GET /submissions/{id}/files`: アップロード済みファイル一覧取得
 - `POST /jobs`: ジョブ投入
 - `GET /jobs/{id}/status|logs|results`: 状態・ログ・結果取得
 - `Authorization: Bearer <token>` ヘッダーを必須とし、`API_TOKENS` 環境変数のカンマ区切りリストと照合してトークンを検証。
@@ -249,5 +251,5 @@ from src.adapters.filesystem_storage_adapter import FileSystemStorageAdapter
 
 ## Maintenance
 
-- updated_at: 2026-01-13
-- reason: 設定管理パターン・ドキュメント構造・テストカバレッジ同期の追加
+- updated_at: 2026-01-19
+- reason: 順次ファイルアップロード機能のユースケース・APIエンドポイント・ポート拡張の追加
