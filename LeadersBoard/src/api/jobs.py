@@ -46,7 +46,9 @@ def get_job_status(redis_client: Redis = redis_dep) -> JobStatusPort:
 
 
 def get_rate_limit(redis_client: Redis = redis_dep) -> RateLimitPort:
-    return RedisRateLimitAdapter(redis_client)
+    # Get job_status dependency inside the function to avoid B008 error
+    job_status = get_job_status(redis_client)
+    return RedisRateLimitAdapter(redis_client, job_status)
 
 
 def get_mlflow_uri() -> str:

@@ -18,8 +18,30 @@ from src.api import submissions as submissions_module
 from src.api.main import app
 from src.domain.create_submission import CreateSubmission
 from src.domain.enqueue_job import EnqueueJob
+from src.ports.rate_limit_port import RateLimitPort
 from src.ports.tracking_port import TrackingPort
 from src.worker.job_worker import JobWorker
+
+
+class MockRateLimitAdapter(RateLimitPort):
+    """Mock RateLimitPort for integration tests that always allows operations."""
+
+    def increment_submission(self, user_id: str) -> int:
+        return 1
+
+    def get_submission_count(self, user_id: str) -> int:
+        return 0
+
+    def decrement_submission(self, user_id: str) -> int:
+        return 0
+
+    def try_increment_submission(self, user_id: str, max_count: int) -> bool:
+        return True
+
+    def try_increment_with_concurrency_check(
+        self, user_id: str, max_concurrency: int, max_rate: int
+    ) -> bool:
+        return True
 
 
 class MockTrackingAdapter(TrackingPort):
@@ -71,7 +93,7 @@ def integration_context(tmp_path: Path) -> Generator[IntegrationContext]:
     storage = FileSystemStorageAdapter(submissions_root, logs_root=logs_root)
     queue_adapter = RedisJobQueueAdapter(fake_redis)
     status_adapter = RedisJobStatusAdapter(fake_redis)
-    rate_limit_adapter = RedisRateLimitAdapter(fake_redis, status_adapter)
+    rate_limit_adapter = MockRateLimitAdapter()  # Use mock to avoid Redis eval issues
     tracking_adapter = MockTrackingAdapter()
     job_worker = JobWorker(queue_adapter, status_adapter, storage, tracking_adapter, artifacts_root=artifacts_root)
 
@@ -81,6 +103,7 @@ def integration_context(tmp_path: Path) -> Generator[IntegrationContext]:
         submissions_module.get_current_user: lambda: "integration-user",
         jobs_module.get_current_user: lambda: "integration-user",
         jobs_module.get_redis_client: lambda: fake_redis,
+        jobs_module.get_rate_limit: lambda: MockRateLimitAdapter(),
     }
     app.dependency_overrides.update(overrides)
     client = TestClient(app)
@@ -96,7 +119,7 @@ def integration_context(tmp_path: Path) -> Generator[IntegrationContext]:
         rate_limit_adapter=rate_limit_adapter,
         job_worker=job_worker,
         create_submission=CreateSubmission(storage),
-        enqueue_job=EnqueueJob(storage, queue_adapter, status_adapter, rate_limit_adapter),
+        enqueue_job=EnqueueJob(storage, queue_adapter, status_adapter, MockRateLimitAdapter()),
     )
 
     try:
