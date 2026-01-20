@@ -93,8 +93,8 @@
 
 - **Framework**: `pytest`
 - **Coverage**: 80%以上推奨（ドメインロジック・ポート実装は必須）
-  - **現在の達成状況**: 89%（目標達成、一部統合テスト修正中）
-  - **テスト数**: 117件（ユニット110件 + 統合7件）
+  - **現在の達成状況**: 93%（目標大幅達成、単体/統合テスト完全実装）
+  - **テスト数**: 174件（ユニット148件 + 統合26件）
 - **Integration Test**: docker-compose環境でエンドツーエンドテスト
 - **Test Organization**:
   - `/tests/unit/` - モックアダプタを使用した高速テスト（ドメイン・アダプタ・API・Worker・Streamlit UI）
@@ -290,5 +290,5 @@ render_jobs_with_auto_refresh = st.fragment(run_every="5s")(_render_jobs)
 
 ## Maintenance
 
-- updated_at: 2026-01-19
-- reason: アトミック同時実行制限・レート制限の実装とアダプタ間依存関係の追加
+- updated_at: 2026-01-20
+- reason: 順次ファイルアップロードAPIエンドポイントとテストカバレッジの更新

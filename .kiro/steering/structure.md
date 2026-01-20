@@ -10,7 +10,7 @@ Clean-lite設計（ドメイン/ポート/アダプタ）を採用し、ドメ�
 
 **Location**: `/src/domain/`  
 **Purpose**: ビジネスロジック・ユースケース（外部実装に非依存）  
-**Example**: `CreateSubmission`, `AddSubmissionFile`, `GetSubmissionFiles`, `EnqueueJob`, `GetJobStatus`, `GetResults`
+**Example**: `CreateSubmission`, `AddSubmissionFile`, `GetSubmissionFiles`, `EnqueueJob`, `GetJobStatus`, `GetJobResults`
 
 ### ポート層（抽象インタフェース）
 
@@ -61,9 +61,9 @@ API 側で Redis カウンター（`leaderboard:rate:{user_id}`）を参照し�
 **Purpose**: REST API エンドポイント、認証、バリデーション、レート制限  
 **Example**:
 
-- `POST /submissions`: 提出受付（単一ファイル or 一括アップロード）
-- `POST /submissions/{id}/files`: 既存submissionへの個別ファイル追加
-- `GET /submissions/{id}/files`: アップロード済みファイル一覧取得
+- `POST /submissions`: 提出受付（単一ファイル or 一括アップロード、順次アップロード対応）
+- `POST /submissions/{id}/files`: 既存submissionへの個別ファイル追加（順次アップロード）
+- `GET /submissions/{id}/files`: アップロード済みファイル一覧取得（順次アップロード対応）
 - `POST /jobs`: ジョブ投入
 - `GET /jobs/{id}/status|logs|results`: 状態・ログ・結果取得
 - `Authorization: Bearer <token>` ヘッダーを必須とし、`API_TOKENS` 環境変数のカンマ区切りリストと照合してトークンを検証。
@@ -245,16 +245,16 @@ from src.adapters.filesystem_storage_adapter import FileSystemStorageAdapter
 - **ユニットテスト**: ドメイン・ポート実装（モックアダプタ使用）
   - **Location**: `/tests/unit/`
   - **Focus**: ドメインロジック・アダプタの単体テスト
-  - **Count**: 55件
+  - **Count**: 148件
 - **統合テスト**: docker-compose環境でエンドツーエンド（実Redis・MLflow使用）
   - **Location**: `/tests/integration/`
   - **Coverage**: エンドツーエンドフロー、metrics.json読み取り、セキュリティ（パストラバーサル）、エラーハンドリング（OOM、タイムアウト、metrics.json不在/不正）
-  - **Count**: 10件
+  - **Count**: 26件
 - **境界テスト**: ファイルサイズ上限、タイムアウト、重複投入、OOM等
-- **Overall Coverage**: 89%（目標80%達成）
-- **Total Tests**: 117件
+- **Overall Coverage**: 93%（目標80%大幅達成）
+- **Total Tests**: 174件
 
 ## Maintenance
 
-- updated_at: 2026-01-19
-- reason: EnqueueJobの完全性検証・カウンターロールバック・アダプタ間依存関係パターンの追加
+- updated_at: 2026-01-20
+- reason: 順次ファイルアップロード機能のAPIエンドポイントとテスト統計の更新
