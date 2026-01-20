@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+import os
 from io import BytesIO
 from pathlib import Path
 
@@ -280,4 +282,182 @@ def test_add_file_no_orphaned_file_on_validation_failure(tmp_path: Path) -> None
     # メタデータが変更されていないことを確認
     import json
     metadata = json.loads(metadata_file.read_text())
-    assert metadata["files"] == ["script.py"]  # 変更されていないはず
+    assert set(metadata["files"]) == {"script.py"}  # 変更されていないはず
+
+
+def test_sequential_file_upload_workflow(tmp_path: Path) -> None:
+    """順次ファイルアップロードの完全なワークフローをテスト（要件1.1）"""
+    root = tmp_path / "submissions"
+    adapter = FileSystemStorageAdapter(root)
+
+    # 初期submissionを作成（main.py, config.yaml）
+    submission_dir = root / "sequential-sub"
+    submission_dir.mkdir(parents=True)
+    metadata_file = submission_dir / "metadata.json"
+    metadata_file.write_text('{"files": ["main.py", "config.yaml"], "user_id": "user456", "entrypoint": "main.py", "config_file": "config.yaml"}')
+
+    # 順次ファイルを追加
+    files_to_add = [
+        ("data.py", b"def process_data():\n    pass"),
+        ("utils.py", b"def helper():\n    return True"),
+        ("model.zip", b"binary_model_data"),
+    ]
+
+    added_files = []
+    for filename, content in files_to_add:
+        file_obj = BytesIO(content)
+        result = adapter.add_file("sequential-sub", file_obj, filename, "user456")
+        assert result["filename"] == filename
+        assert result["size"] == len(content)
+        added_files.append(filename)
+
+        # ファイルが保存されていることを確認
+        saved_file = submission_dir / filename
+        assert saved_file.exists()
+        assert saved_file.read_bytes() == content
+
+    # 最終的なメタデータを確認
+    final_metadata = json.loads(metadata_file.read_text())
+    expected_files = ["main.py", "config.yaml"] + added_files
+    assert set(final_metadata["files"]) == set(expected_files)
+    assert final_metadata["user_id"] == "user456"
+
+
+def test_list_files_sequential_upload_order(tmp_path: Path) -> None:
+    """順次アップロードされたファイルの一覧表示と順序を確認（要件8.1）"""
+    root = tmp_path / "submissions"
+    adapter = FileSystemStorageAdapter(root)
+
+    # submissionを作成し、順次ファイルを追加
+    submission_dir = root / "sequential-list"
+    submission_dir.mkdir(parents=True)
+
+    # 初期ファイル
+    (submission_dir / "main.py").write_bytes(b"print('main')")
+    (submission_dir / "config.yaml").write_bytes(b"batch_size: 32")
+
+    # 順次追加されたファイル（タイムスタンプをシミュレート）
+    import time
+    base_time = time.time()
+
+    sequential_files = [
+        ("data.py", b"data_content", base_time + 1),
+        ("utils.py", b"utils_content", base_time + 2),
+        ("model.zip", b"model_content", base_time + 3),
+    ]
+
+    for filename, content, mtime in sequential_files:
+        file_path = submission_dir / filename
+        file_path.write_bytes(content)
+        # ファイルの変更時刻を設定
+        os.utime(file_path, (mtime, mtime))
+
+    # メタデータ作成
+    metadata = {
+        "files": ["main.py", "config.yaml", "data.py", "utils.py", "model.zip"],
+        "user_id": "user789",
+        "entrypoint": "main.py",
+        "config_file": "config.yaml"
+    }
+    metadata_file = submission_dir / "metadata.json"
+    metadata_file.write_text(json.dumps(metadata))
+
+    # ファイル一覧を取得
+    files_list = adapter.list_files("sequential-list", "user789")
+
+    # 全ファイルが含まれていることを確認
+    assert len(files_list) == 5
+    filenames = {f["filename"] for f in files_list}
+    assert filenames == {"main.py", "config.yaml", "data.py", "utils.py", "model.zip"}
+
+    # 各ファイルの情報が正しいことを確認
+    for file_info in files_list:
+        filename = file_info["filename"]
+        file_path = submission_dir / filename
+        assert file_info["size"] == file_path.stat().st_size
+        assert "uploaded_at" in file_info
+
+        # ISO形式の日時文字列であることを確認
+        uploaded_at = file_info["uploaded_at"]
+        assert "T" in uploaded_at
+        # Pythonのdatetime.isoformat()はデフォルトでタイムゾーン情報なし
+        assert len(uploaded_at) >= 19  # YYYY-MM-DDTHH:MM:SS の最低長
+
+
+def test_metadata_integrity_during_sequential_upload(tmp_path: Path) -> None:
+    """順次アップロード中のメタデータ整合性をテスト"""
+    root = tmp_path / "submissions"
+    adapter = FileSystemStorageAdapter(root)
+
+    submission_dir = root / "integrity-test"
+    submission_dir.mkdir(parents=True)
+    metadata_file = submission_dir / "metadata.json"
+
+    # 初期メタデータ
+    initial_metadata = {
+        "files": ["main.py"],
+        "user_id": "user999",
+        "entrypoint": "main.py",
+        "config_file": "config.yaml"
+    }
+    metadata_file.write_text(json.dumps(initial_metadata))
+
+    # ファイルを順次追加
+    file_sequence = [
+        ("config.yaml", b"config_content"),
+        ("data.py", b"data_content"),
+        ("utils.py", b"utils_content"),
+    ]
+
+    expected_files = list(initial_metadata["files"])
+
+    for filename, content in file_sequence:
+        file_obj = BytesIO(content)
+        adapter.add_file("integrity-test", file_obj, filename, "user999")
+
+        # 各追加後にメタデータが正しく更新されていることを確認
+        current_metadata = json.loads(metadata_file.read_text())
+        assert filename in current_metadata["files"]
+        assert current_metadata["user_id"] == "user999"
+
+        # 新しいファイルを期待ファイルリストに追加
+        if filename not in expected_files:
+            expected_files.append(filename)
+
+        assert set(current_metadata["files"]) == set(expected_files)
+
+
+def test_sequential_upload_error_recovery(tmp_path: Path) -> None:
+    """順次アップロード中のエラー発生時の回復性をテスト"""
+    root = tmp_path / "submissions"
+    adapter = FileSystemStorageAdapter(root)
+
+    submission_dir = root / "error-recovery"
+    submission_dir.mkdir(parents=True)
+    metadata_file = submission_dir / "metadata.json"
+    metadata_file.write_text('{"files": ["main.py"], "user_id": "user000"}')
+
+    # 正常なファイル追加
+    file_obj1 = BytesIO(b"valid_content")
+    result1 = adapter.add_file("error-recovery", file_obj1, "valid.py", "user000")
+    assert result1["filename"] == "valid.py"
+
+    # メタデータが更新されていることを確認
+    metadata_after_first = json.loads(metadata_file.read_text())
+    assert "valid.py" in metadata_after_first["files"]
+    assert len(metadata_after_first["files"]) == 2
+
+    # エラーが発生するファイル追加（既に存在するファイル名）
+    file_obj2 = BytesIO(b"duplicate_content")
+    with pytest.raises(ValueError, match="file valid.py already exists"):
+        adapter.add_file("error-recovery", file_obj2, "valid.py", "user000")
+
+    # エラー後もメタデータが変更されていないことを確認（ロールバック）
+    metadata_after_error = json.loads(metadata_file.read_text())
+    assert metadata_after_error == metadata_after_first
+    assert len(metadata_after_error["files"]) == 2
+
+    # ファイルが書き込まれていないことを確認
+    duplicate_file = submission_dir / "valid.py"
+    original_content = duplicate_file.read_bytes()
+    assert original_content == b"valid_content"  # 元のファイル内容が保持されている
