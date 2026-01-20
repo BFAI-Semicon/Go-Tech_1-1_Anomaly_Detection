@@ -408,7 +408,7 @@ def test_race_condition_prevention_with_sequential_requests() -> None:
     # ジョブ状態を管理するクラス
     class TestStatus(JobStatusPort):
         """テスト用のジョブ状態管理"""
-        def __init__(self):
+        def __init__(self) -> None:
             self.jobs: dict[str, dict[str, Any]] = {}
 
         def create(self, job_id: str, submission_id: str, user_id: str) -> None:
@@ -514,3 +514,105 @@ def test_race_condition_prevention_with_sequential_requests() -> None:
     # 最終的な実行中ジョブ数を確認（1つだけRUNNING状態のはず）
     final_running = status.count_running("user")
     assert final_running == 1, f"最終的な実行中ジョブ数は1であるべきだが、{final_running}個ある"
+
+
+def test_enqueue_job_validates_completeness_for_sequential_upload() -> None:
+    """順次ファイルアップロード後のsubmission完全性検証が正しく動作することを確認（要件5.1-5.4）"""
+    storage = DummyStorage()
+    queue = DummyQueue()
+    status = DummyStatus()
+    limiter = DummyRateLimit()
+    limiter._status = status
+
+    use_case = EnqueueJob(storage, queue, status, limiter)
+
+    # Mock Path.exists to return True for config file validation
+    with patch.object(Path, 'exists', return_value=True):
+        job_id = use_case.execute("sequential-sub", "user", {"lr": 0.01})
+
+        assert job_id
+        assert len(queue.jobs) == 1
+        # entrypointとconfig_fileの検証が実行されたことを確認
+        assert storage.entrypoint_valid  # validate_entrypointが呼ばれたはず
+        assert len(limiter.try_increment_with_concurrency_calls) == 1
+
+
+def test_enqueue_job_fails_when_entrypoint_missing_in_sequential() -> None:
+    """順次アップロードでentrypointファイルが存在しない場合の検証（要件5.1）"""
+    storage = DummyStorage(entrypoint_valid=False)  # entrypointが存在しない
+    queue = DummyQueue()
+    status = DummyStatus()
+    limiter = DummyRateLimit()
+    limiter._status = status
+
+    use_case = EnqueueJob(storage, queue, status, limiter)
+
+    with pytest.raises(ValueError, match="entrypoint file not found"):
+        use_case.execute("sequential-sub", "user", {"lr": 0.01})
+
+    # 検証失敗時にレート制限カウンターがロールバックされることを確認
+    assert len(limiter.try_increment_with_concurrency_calls) == 1
+    assert len(limiter.decrement_calls) == 1  # ロールバック
+
+
+def test_enqueue_job_fails_when_config_file_missing_in_sequential() -> None:
+    """順次アップロードでconfig_fileが存在しない場合の検証（要件5.2）"""
+    storage = DummyStorage()
+    queue = DummyQueue()
+    status = DummyStatus()
+    limiter = DummyRateLimit()
+    limiter._status = status
+
+    use_case = EnqueueJob(storage, queue, status, limiter)
+
+    # Mock Path.exists to return False for config file
+    with patch.object(Path, 'exists', return_value=False):
+        with pytest.raises(ValueError, match="config file not found"):
+            use_case.execute("sequential-sub", "user", {"lr": 0.01})
+
+        # 検証失敗時にレート制限カウンターがロールバックされることを確認
+        assert len(limiter.try_increment_with_concurrency_calls) == 1
+        assert len(limiter.decrement_calls) == 1  # ロールバック
+
+
+def test_enqueue_job_succeeds_with_complete_sequential_submission() -> None:
+    """順次アップロードで完全なsubmissionのジョブ投入が成功することを確認（要件5.3, 5.4）"""
+    storage = DummyStorage(entrypoint_valid=True)
+    queue = DummyQueue()
+    status = DummyStatus()
+    limiter = DummyRateLimit()
+    limiter._status = status
+
+    use_case = EnqueueJob(storage, queue, status, limiter)
+
+    # Mock Path.exists to return True for config file
+    with patch.object(Path, 'exists', return_value=True):
+        job_id = use_case.execute("complete-sequential-sub", "user", {"lr": 0.01})
+
+        assert job_id
+        assert len(queue.jobs) == 1
+        # 完全性検証が成功したことを確認
+        job_details = queue.jobs[0]
+        assert job_details[1] == "complete-sequential-sub"  # submission_id
+        assert len(limiter.try_increment_with_concurrency_calls) == 1
+
+
+def test_enqueue_job_rolls_back_on_validation_failure_sequential() -> None:
+    """順次アップロードでの検証失敗時に適切なロールバックが行われることを確認"""
+    storage = DummyStorage(entrypoint_valid=False)  # 検証失敗
+    queue = DummyQueue()
+    status = DummyStatus()
+    limiter = DummyRateLimit()
+    limiter._status = status
+
+    use_case = EnqueueJob(storage, queue, status, limiter)
+
+    with patch.object(Path, 'exists', return_value=True):
+        with pytest.raises(ValueError, match="entrypoint file not found"):
+            use_case.execute("sequential-sub", "user", {"lr": 0.01})
+
+        # 検証失敗時に全ての状態がロールバックされることを確認
+        assert len(limiter.try_increment_with_concurrency_calls) == 1
+        assert len(limiter.decrement_calls) == 1  # レート制限カウンターのロールバック
+        assert len(queue.jobs) == 0  # ジョブが投入されていない
+        assert len(status.created) == 0  # ジョブステータスが作成されていない
