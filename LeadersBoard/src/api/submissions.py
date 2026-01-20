@@ -145,7 +145,11 @@ async def add_submission_file(
         )
         return result
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        error_message = str(exc)
+        if "does not exist" in error_message:
+            raise HTTPException(status_code=404, detail=error_message) from exc
+        else:
+            raise HTTPException(status_code=400, detail=error_message) from exc
     finally:
         await file.close()
 
