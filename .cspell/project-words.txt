@@ -9,6 +9,7 @@ appendonly
 appuser
 asyncio
 AUPR
+AUPRC
 AUROC
 autouse
 Barusco
@@ -38,6 +39,7 @@ debugpy
 DeepPCB
 devcontainers
 devtoken
+DFKDE
 Dice
 DiffusionAD
 dotenv
