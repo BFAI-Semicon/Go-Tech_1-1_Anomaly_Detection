@@ -2,6 +2,7 @@
 
 import logging
 import os
+
 from fastapi import FastAPI
 
 from src.api.jobs import router as jobs_router
