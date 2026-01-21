@@ -10,6 +10,7 @@ services:
     env_file:
       - .env
     environment:
+      - LOG_LEVEL=DEBUG
       - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
       - MLFLOW_TRACKING_URI=${MLFLOW_TRACKING_URI:-http://mlflow:5010}
       - API_TOKENS=${API_TOKENS}
