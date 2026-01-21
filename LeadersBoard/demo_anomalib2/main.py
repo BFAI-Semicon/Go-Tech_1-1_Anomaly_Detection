@@ -8,8 +8,8 @@ import logging
 from pathlib import Path
 
 from anomalib.data import get_datamodule  # type: ignore[import]
+from anomalib.metrics import AUPR, AUROC, Evaluator, F1Score  # type: ignore[import]
 from anomalib.models import get_model  # type: ignore[import]
-from anomalib.metrics import AUROC, AUPR, F1Score, Evaluator  # type: ignore[import]
 from omegaconf import DictConfig, OmegaConf  # type: ignore[import]
 
 from anomalib.trainers import get_trainer  # type: ignore[import]
