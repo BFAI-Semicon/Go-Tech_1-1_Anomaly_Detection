@@ -7,13 +7,14 @@ model:
       - layer2
       - layer3
 data:
-  name: visa
+  name: folder
   class_path: anomalib.data.Folder
   init_args:
     name: pcb1   # Folderクラスの必須引数
     root: /shared/data/pcb1/Data/Images   # main.py/config.yaml と同階層に pcb1 を配置する想定
     normal_dir: Normal
     abnormal_dir: Anomaly
+    normal_test_dir: Normal  # テスト用の正常画像ディレクトリを指定
     extensions:
       - .jpg
       - .jpeg
@@ -35,5 +36,14 @@ trainer:
   limit_val_batches: 1.0
   num_sanity_val_steps: 0
 metrics:
-  - auroc
-  - f1_score
+  image:
+    - AUROC
+    - AUPR
+    - F1Score
+  pixel:
+    - AUROC
+    - AUPR
+    - F1Score
+
+threshold:
+  method: adaptive

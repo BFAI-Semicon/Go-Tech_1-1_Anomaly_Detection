@@ -9,6 +9,7 @@ from pathlib import Path
 
 from anomalib.data import get_datamodule  # type: ignore[import]
 from anomalib.models import get_model  # type: ignore[import]
+from anomalib.metrics import AUROC, AUPR, F1Score, Evaluator  # type: ignore[import]
 from omegaconf import DictConfig, OmegaConf  # type: ignore[import]
 
 from anomalib.trainers import get_trainer  # type: ignore[import]
@@ -87,6 +88,17 @@ def run_training(config: DictConfig, output_dir: Path) -> None:
     model = get_model(config.model)
     trainer = get_trainer(config)
 
+    # 1.5. Evaluatorを明示的に設定（AUPRを含む）
+    LOGGER.info("Setting up evaluator with AUPR metrics")
+    evaluator = Evaluator(
+        test_metrics=[
+            AUROC(fields=["pred_score", "gt_label"], prefix="image_"),
+            AUPR(fields=["pred_score", "gt_label"], prefix="image_"),
+            F1Score(fields=["pred_label", "gt_label"], prefix="image_")
+        ]
+    )
+    model.evaluator = evaluator
+
     # 2. 学習を実行
     LOGGER.info("Starting training")
     trainer.fit(model=model, datamodule=datamodule)
@@ -96,16 +108,20 @@ def run_training(config: DictConfig, output_dir: Path) -> None:
     test_results = trainer.test(model=model, datamodule=datamodule)
 
     # 4. メトリクスを抽出（anomalib 2.2.0 では test_results に含まれる）
+    LOGGER.info(f"Raw test_results: {test_results}")
     metrics = {}
     if test_results and len(test_results) > 0:
         for key, value in test_results[0].items():
-            if isinstance(value, (int, float)):
-                metrics[key] = float(value)
-            elif hasattr(value, 'item'):
-                try:
+            LOGGER.info(f"Processing metric: {key} = {value} (type: {type(value)})")
+            try:
+                if isinstance(value, (int, float)):
+                    metrics[key] = float(value)
+                elif hasattr(value, 'item'):
                     metrics[key] = float(value.item())
-                except (ValueError, TypeError):
-                    pass
+                else:
+                    LOGGER.warning(f"Unsupported metric type for {key}: {type(value)}")
+            except Exception as e:
+                LOGGER.error(f"Failed to process metric {key}: {e}")
 
     LOGGER.info(f"Extracted metrics: {metrics}")
 
@@ -132,7 +148,7 @@ def main() -> None:
     parser.add_argument(
         "--config",
         type=Path,
-        default=Path("LeadersBoard/demo_anomalib/config.yaml"),
+        required=True,
         help="Padim 用の設定ファイル",
     )
     parser.add_argument(
