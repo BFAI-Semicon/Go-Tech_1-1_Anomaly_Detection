@@ -18,7 +18,7 @@ LeadersBoard のデプロイ手順書
 nvidia-smi
 
 # Docker で GPU が認識されることを確認
-docker run --rm --gpus all nvidia/cuda:12.0-base nvidia-smi
+docker run --rm --gpus all nvidia/cuda:12.8.0-base-ubuntu22.04 nvidia-smi
 ```
 
 ## ローカル環境デプロイ
