@@ -24,7 +24,7 @@ class JobWorker:
     """Job queue consumer that executes submitted jobs."""
 
     DEFAULT_ARTIFACT_ROOT = Path(os.getenv("ARTIFACT_ROOT", "/shared/artifacts"))
-    RESOURCE_TIMEOUTS: dict[str, float] = {"small": 30 * 60, "medium": 60 * 60}
+    RESOURCE_TIMEOUTS: dict[str, float | None] = {"small": 30 * 60, "medium": 60 * 60, "unlimited": None}
     DEFAULT_TIMEOUT = RESOURCE_TIMEOUTS["small"]
 
     def __init__(
@@ -98,7 +98,7 @@ class JobWorker:
             self._validate_path(config_file)
 
             command = self._build_command(submission_dir, entrypoint, config_file, job_id)
-            timeout_seconds = self._timeout_for_resource(job.get("resource_class"))
+            timeout_seconds = self._timeout_for_resource(job.get("config", {}).get("resource_class"))
 
             logger.info(f"Config file: {submission_dir / config_file}")
             logger.info(f"Output directory: {output_dir}")
@@ -145,7 +145,7 @@ class JobWorker:
             str(self.artifacts_root / job_id),
         ]
 
-    def _timeout_for_resource(self, resource_class: str | None) -> float:
+    def _timeout_for_resource(self, resource_class: str | None) -> float | None:
         if resource_class:
             return self.RESOURCE_TIMEOUTS.get(resource_class, self.DEFAULT_TIMEOUT)
         return self.DEFAULT_TIMEOUT
