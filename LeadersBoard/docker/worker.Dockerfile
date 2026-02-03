@@ -1,6 +1,7 @@
 # LeadersBoard Worker Dockerfile (GPU)
+# Uses CUDA 12.6 (compatible with anomalib cu124 extra)
 
-FROM nvcr.io/nvidia/pytorch:25.11-py3
+FROM nvcr.io/nvidia/pytorch:24.12-py3
 
 WORKDIR /app
 
