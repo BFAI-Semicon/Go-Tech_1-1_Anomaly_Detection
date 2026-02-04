@@ -157,6 +157,12 @@ class JobWorker:
             self.tracking.start_run(job_id)
             self.tracking.log_params(metrics_data["params"])
             self.tracking.log_metrics(metrics_data["metrics"])
+
+            # Log performance metrics as system metrics
+            if "performance" in metrics_data:
+                performance_metrics = {f"system/{k}": v for k, v in metrics_data["performance"].items()}
+                self.tracking.log_metrics(performance_metrics)
+
             self.tracking.log_artifact(str(output_dir))
             run_id = self.tracking.end_run()
             return run_id
@@ -198,7 +204,8 @@ class JobWorker:
         Expected format:
         {
             "params": {"method": "padim", "dataset": "mvtec_ad", ...},
-            "metrics": {"image_auc": 0.985, "pixel_pro": 0.92, ...}
+            "metrics": {"image_auc": 0.985, "pixel_pro": 0.92, ...},
+            "performance": {"training_time_seconds": 49.29, "peak_gpu_memory_mb": 4444.37, ...}
         }
         """
         metrics_file = output_dir / "metrics.json"
