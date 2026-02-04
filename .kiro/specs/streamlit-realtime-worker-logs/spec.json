@@ -1,12 +1,12 @@
 {
   "feature_name": "streamlit-realtime-worker-logs",
   "created_at": "2026-02-04T00:00:00Z",
-  "updated_at": "2026-02-04T00:00:00Z",
+  "updated_at": "2026-02-04T01:00:00Z",
   "language": "ja",
-  "phase": "initialized",
+  "phase": "requirements-generated",
   "approvals": {
     "requirements": {
-      "generated": false,
+      "generated": true,
       "approved": false
     },
     "design": {
