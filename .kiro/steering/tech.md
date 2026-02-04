@@ -204,6 +204,7 @@ docker-compose -f docker-compose.yml up --build
 - `resource_class`（small/medium）が指定されていれば `RESOURCE_TIMEOUTS` からタイムアウトを選ぶ。
 - **投稿者のコードは `metrics.json` を出力し、MLflowに依存しない**。
 - Worker が `metrics.json` を読み取り、`TrackingPort` 経由で MLflow に記録する。
+- **パフォーマンスメトリクス**: `metrics.json` の `performance` フィールド（`training_time_seconds`, `peak_gpu_memory_mb`, `inference_time_ms` 等）を `system/` プレフィックス付きで MLflow に追加記録。
 - `TrackingPort.end_run()` から `run_id` を取得して `JobStatus.COMPLETED` を更新する。
 - 例外・タイムアウト・OOM・metrics.json 不在/不正時には `FAILED` として `error` メッセージを保存する。
 
@@ -276,5 +277,5 @@ render_jobs_with_auto_refresh = st.fragment(run_every="5s")(_render_jobs)
 
 ## Maintenance
 
-- updated_at: 2025-12-22
-- reason: ドキュメント標準追加（README.md、API仕様、デプロイ手順の完備）
+- updated_at: 2026-02-04
+- reason: パフォーマンスメトリクスログ記録機能の追加（training_time_seconds, peak_gpu_memory_mb等のsystem/プレフィックス付き記録）
