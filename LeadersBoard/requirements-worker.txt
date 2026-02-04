@@ -1,7 +1,7 @@
 # Worker dependencies
-# Note: torch, torchvision, opencv-python, pyyaml are pre-installed in nvcr.io/nvidia/pytorch:25.11-py3
+# Note: torch, torchvision, opencv-python, pyyaml are pre-installed in nvcr.io/nvidia/pytorch:24.12-py3
 # Anomalib automatically installs: lightning, kornia, timm, FrEIA, omegaconf, etc.
-anomalib
+anomalib[full] @ git+https://github.com/openvinotoolkit/anomalib.git
 # Avoid pkg_resources removal warning (some dependencies still use it)
 setuptools<81
 # Use headless version to avoid conflicts with base image opencv-python

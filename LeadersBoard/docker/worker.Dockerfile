@@ -1,4 +1,5 @@
 # LeadersBoard Worker Dockerfile (GPU)
+# Uses CUDA 12.6 (compatible with anomalib cu124 extra)
 
 FROM nvcr.io/nvidia/pytorch:25.11-py3
 
@@ -7,6 +8,7 @@ WORKDIR /app
 # Install system dependencies
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
+    	git \
         libgl1 \
         libglib2.0-0 \
         git-lfs && \

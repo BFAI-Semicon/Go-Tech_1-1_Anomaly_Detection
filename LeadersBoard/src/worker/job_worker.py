@@ -24,7 +24,7 @@ class JobWorker:
     """Job queue consumer that executes submitted jobs."""
 
     DEFAULT_ARTIFACT_ROOT = Path(os.getenv("ARTIFACT_ROOT", "/shared/artifacts"))
-    RESOURCE_TIMEOUTS: dict[str, float] = {"small": 30 * 60, "medium": 60 * 60}
+    RESOURCE_TIMEOUTS: dict[str, float | None] = {"small": 30 * 60, "medium": 60 * 60, "unlimited": None}
     DEFAULT_TIMEOUT = RESOURCE_TIMEOUTS["small"]
 
     def __init__(
@@ -98,7 +98,7 @@ class JobWorker:
             self._validate_path(config_file)
 
             command = self._build_command(submission_dir, entrypoint, config_file, job_id)
-            timeout_seconds = self._timeout_for_resource(job.get("resource_class"))
+            timeout_seconds = self._timeout_for_resource(job.get("config", {}).get("resource_class"))
 
             logger.info(f"Config file: {submission_dir / config_file}")
             logger.info(f"Output directory: {output_dir}")
@@ -145,7 +145,7 @@ class JobWorker:
             str(self.artifacts_root / job_id),
         ]
 
-    def _timeout_for_resource(self, resource_class: str | None) -> float:
+    def _timeout_for_resource(self, resource_class: str | None) -> float | None:
         if resource_class:
             return self.RESOURCE_TIMEOUTS.get(resource_class, self.DEFAULT_TIMEOUT)
         return self.DEFAULT_TIMEOUT
@@ -157,6 +157,12 @@ class JobWorker:
             self.tracking.start_run(job_id)
             self.tracking.log_params(metrics_data["params"])
             self.tracking.log_metrics(metrics_data["metrics"])
+
+            # Log performance metrics as system metrics
+            if "performance" in metrics_data:
+                performance_metrics = {f"system/{k}": v for k, v in metrics_data["performance"].items()}
+                self.tracking.log_metrics(performance_metrics)
+
             self.tracking.log_artifact(str(output_dir))
             run_id = self.tracking.end_run()
             return run_id
@@ -198,7 +204,8 @@ class JobWorker:
         Expected format:
         {
             "params": {"method": "padim", "dataset": "mvtec_ad", ...},
-            "metrics": {"image_auc": 0.985, "pixel_pro": 0.92, ...}
+            "metrics": {"image_auc": 0.985, "pixel_pro": 0.92, ...},
+            "performance": {"training_time_seconds": 49.29, "peak_gpu_memory_mb": 4444.37, ...}
         }
         """
         metrics_file = output_dir / "metrics.json"
