@@ -1,16 +1,9 @@
 """LeadersBoard API - Main entry point."""
 
-import logging
-import os
-
 from fastapi import FastAPI
 
 from src.api.jobs import router as jobs_router
 from src.api.submissions import router as submissions_router
-
-# ログレベルを設定
-log_level = os.getenv("LOG_LEVEL", "INFO").upper()
-logging.basicConfig(level=getattr(logging, log_level, logging.INFO))
 
 app = FastAPI(
     title="LeadersBoard API",

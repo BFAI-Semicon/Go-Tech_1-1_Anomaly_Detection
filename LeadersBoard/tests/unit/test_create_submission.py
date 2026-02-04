@@ -32,18 +32,6 @@ class DummyStorage(StoragePort):
     def load_logs(self, job_id: str) -> str:
         raise NotImplementedError
 
-    def add_file(
-        self,
-        submission_id: str,
-        file: BinaryIO,
-        filename: str,
-        user_id: str,
-    ) -> dict[str, str]:
-        raise NotImplementedError
-
-    def list_files(self, submission_id: str, user_id: str) -> list[dict[str, str]]:
-        raise NotImplementedError
-
 
 def _create_file(contents: bytes) -> io.BytesIO:
     stream = io.BytesIO(contents)

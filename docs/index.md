@@ -2,13 +2,9 @@
 
 ## 【１－１】教師なし学習に基づく異常判定機能の設計
 
+## 【１－２】欠陥箇所の可視化機能の設計
+
 ### 文献調査
 
 1. [半導体製造における異常検知手法 文献調査結果](./Survey/Papers/survey_results.md)
 2. [半導体製造における自動外観検査](./Survey/Papers/4papers_for_semicon_industry.md)
-
-### 実験
-
-- [半導体画像に対するモデル検証](./Survey/Experiments/MIIC_10models.md)
-
-## 【１－２】欠陥箇所の可視化機能の設計

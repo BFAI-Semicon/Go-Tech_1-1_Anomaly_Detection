@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import os
-import time
 from collections.abc import Iterable
 from typing import Any, cast
 
@@ -99,128 +98,6 @@ def get_status_color(status: str) -> str:
         return "❓"
 
 
-def add_submission_file(
-    api_url: str,
-    token: str,
-    submission_id: str,
-    file: Any,
-    max_retries: int = 3,
-) -> dict[str, Any]:
-    """
-    submissionにファイルを1つ追加する（リトライ付き）。
-
-    Args:
-        api_url: API URL
-        token: 認証トークン
-        submission_id: submission ID
-        file: アップロードするファイル
-        max_retries: 最大リトライ回数
-
-    Returns:
-        {"filename": str, "size": int}
-
-    Raises:
-        requests.HTTPError: 4xxエラー（リトライなし）
-        Exception: リトライ3回失敗後
-    """
-    url = f"{api_url.rstrip('/')}/submissions/{submission_id}/files"
-    headers = {"Authorization": f"Bearer {token}"}
-
-    for attempt in range(max_retries):
-        file.seek(0)  # Reset file pointer to beginning for retry
-        try:
-            files_payload = {"file": (file.name, file, file.type or "application/octet-stream")}
-            response = requests.post(url, headers=headers, files=files_payload, timeout=30)
-            response.raise_for_status()
-            return response.json()
-        except requests.HTTPError as exc:
-            if 400 <= exc.response.status_code < 500:
-                # 4xxエラー: リトライしない
-                raise
-            if attempt < max_retries - 1:
-                # 5xxエラー: リトライ
-                time.sleep(2 ** attempt)  # Exponential backoff
-                continue
-            raise Exception("Max retries exceeded") from exc
-        except Exception as exc:
-            if attempt < max_retries - 1:
-                # その他のエラー: リトライ
-                time.sleep(2 ** attempt)
-                continue
-            raise Exception("Max retries exceeded") from exc
-
-    raise Exception("Max retries exceeded")
-
-
-def submit_files_sequentially(
-    api_url: str,
-    token: str,
-    files: list[Any],
-    entrypoint: str,
-    config_file: str,
-    metadata: dict[str, Any],
-) -> str:
-    """
-    ファイルを順次アップロードする。
-
-    Args:
-        api_url: API URL
-        token: 認証トークン
-        files: アップロードするファイルリスト
-        entrypoint: エントリポイントファイル名
-        config_file: 設定ファイル名
-        metadata: メタデータ
-
-    Returns:
-        submission_id: 作成されたsubmission ID
-
-    Raises:
-        Exception: アップロード失敗
-    """
-    if not files:
-        raise ValueError("No files to upload")
-
-    # Streamlit UI要素（テスト時はNone）
-    progress_placeholder = None
-    if st is not None:
-        progress_placeholder = st.empty()
-
-    # 最初のファイルでsubmission作成
-    first_file = files[0]
-    files_payload = [(first_file.name, first_file, first_file.type or "application/octet-stream")]
-    submission = submit_submission(
-        api_url=api_url,
-        token=token,
-        files=files_payload,
-        entrypoint=entrypoint,
-        config_file=config_file,
-        metadata=metadata,
-    )
-    submission_id = submission["submission_id"]
-
-    # 進捗表示
-    if progress_placeholder is not None:
-        progress_placeholder.info(f"1/{len(files)} ファイルをアップロード中...")
-
-    # 2番目以降のファイルを順次アップロード
-    for i, file in enumerate(files[1:], start=2):
-        try:
-            if progress_placeholder is not None:
-                progress_placeholder.info(f"{i}/{len(files)} ファイルをアップロード中...")
-            add_submission_file(api_url, token, submission_id, file)
-        except Exception as exc:
-            error_msg = f"ファイルアップロード失敗: {file.name} - {exc}"
-            if progress_placeholder is not None:
-                progress_placeholder.error(error_msg)
-            raise Exception(error_msg) from exc
-
-    # 完了メッセージ
-    if progress_placeholder is not None:
-        progress_placeholder.success(f"全ファイル（{len(files)}件）のアップロードが完了しました。")
-
-    return submission_id
-
-
 def _render_submission_form(api_url: str, mlflow_url: str) -> None:
     if st is None:  # pragma: no cover
         raise RuntimeError("streamlit is not installed. Install it to run the UI.")
@@ -232,13 +109,7 @@ def _render_submission_form(api_url: str, mlflow_url: str) -> None:
     config_file = st.text_input("Config file", value="config.yaml")
     metadata_text = st.text_area("metadata (JSON)", value='{"method":"padim"}')
 
-    # アップロード完了状態の取得
-    upload_complete = st.session_state.get("upload_complete", False)
-    submission_id = st.session_state.get("submission_id")
-
-    # Submitボタン（アップロード処理）
-    submit_disabled = st.session_state.get("uploading", False)
-    if st.button("Submit", type="primary", disabled=submit_disabled):
+    if st.button("Submit", type="primary"):
         if not token:
             st.error("API Tokenを入力してください。")
             return
@@ -251,60 +122,40 @@ def _render_submission_form(api_url: str, mlflow_url: str) -> None:
             st.error("metadata は JSON 形式で入力してください。")
             return
 
-        # アップロード開始
-        st.session_state["uploading"] = True
-        st.session_state["upload_complete"] = False
-
+        files_payload = [(f.name, f, f.type or "application/octet-stream") for f in uploaded_files]
         try:
-            # 順次アップロード実行
-            submission_id = submit_files_sequentially(
+            submission = submit_submission(
                 api_url=api_url,
                 token=token,
-                files=uploaded_files,
+                files=files_payload,
                 entrypoint=entrypoint,
                 config_file=config_file,
                 metadata=metadata,
             )
-            st.session_state["submission_id"] = submission_id
-            st.session_state["upload_complete"] = True
+            submission_id = submission["submission_id"]
             st.success(f"Submission created: {submission_id}")
-            st.rerun()  # UI更新
         except Exception as exc:  # pragma: no cover - UI経由のみ
             st.error(f"Submission failed: {exc}")
-        finally:
-            st.session_state["uploading"] = False
+            return
 
-    # ジョブ投入ボタン（アップロード完了後に有効化）
-    if upload_complete and submission_id:
-        if st.button("Enqueue Job", type="secondary"):
-            try:
-                job_resp = create_job(
-                    api_url=api_url,
-                    token=token,
-                    submission_id=submission_id,
-                    config={"resource_class": "medium"},
-                )
-                job_info = {
-                    "job_id": job_resp.get("job_id"),
-                    "submission_id": submission_id,
-                    "status": job_resp.get("status", "pending"),
-                    "mlflow_url": mlflow_url,
-                }
-                add_job_to_state(st.session_state, job_info)
-                st.success(f"Job enqueued: {job_info['job_id']}")
-                # ジョブ投入後に状態をリセット
-                st.session_state["upload_complete"] = False
-                st.session_state["submission_id"] = None
-            except Exception as exc:  # pragma: no cover
-                st.error(f"Job enqueue failed: {exc}")
-
-    # アップロード中の状態表示
-    if st.session_state.get("uploading"):
-        st.info("ファイルアップロード中...")
-
-    # アップロード完了の状態表示
-    if upload_complete:
-        st.success("全ファイルのアップロードが完了しました。ジョブを投入してください。")
+        # ジョブ投入
+        try:
+            job_resp = create_job(
+                api_url=api_url,
+                token=token,
+                submission_id=submission_id,
+                config={"resource_class": "medium"},
+            )
+            job_info = {
+                "job_id": job_resp.get("job_id"),
+                "submission_id": submission_id,
+                "status": job_resp.get("status", "pending"),
+                "mlflow_url": mlflow_url,
+            }
+            add_job_to_state(st.session_state, job_info)
+            st.success(f"Job enqueued: {job_info['job_id']}")
+        except Exception as exc:  # pragma: no cover
+            st.error(f"Job enqueue failed: {exc}")
 
 
 def _render_jobs(api_url: str, mlflow_url: str) -> None:

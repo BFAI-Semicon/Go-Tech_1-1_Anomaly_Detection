@@ -175,12 +175,12 @@ def main():
     parser.add_argument("--config", required=True)
     parser.add_argument("--output", required=True)
     args = parser.parse_args()
-
+    
     # 1. 画像データを学習用と予測用に分割
     # 2. 学習実行
     # 3. 予測実行
     # 4. 性能指標計測
-
+    
     # 結果をJSONファイルに出力（MLflowに依存しない）
     results = {
         "params": {
@@ -193,7 +193,7 @@ def main():
             "pixel_pro": 0.92
         }
     }
-
+    
     output_path = Path(args.output)
     output_path.mkdir(parents=True, exist_ok=True)
     with open(output_path / "metrics.json", "w") as f:
@@ -262,7 +262,6 @@ Client → GET /leaderboard (任意)
 #### ExecuteJob (Worker)
 
 <!-- markdownlint-disable MD013 -->
-
 - **入力**: job_id, submission_id, entrypoint, config_file, resource_class
 - **処理**:
   1. JobStatusPort.update(job_id, status=running)
@@ -668,7 +667,7 @@ services:
 ### docker-compose構成
 
 ```yaml
-version: "3.8"
+version: '3.8'
 
 services:
   api:

@@ -84,13 +84,13 @@ mypy src/
 
 ## サービス
 
-| サービス  | ポート | 説明                               |
-| --------- | ------ | ---------------------------------- |
-| API       | 8010   | FastAPI REST API                   |
-| Streamlit | 8501   | Web UI（提出フォーム、ジョブ監視） |
-| MLflow    | 5010   | 実験管理UI                         |
-| Redis     | 6379   | ジョブキュー                       |
-| Worker    | -      | GPU学習・評価ワーカー              |
+| サービス | ポート | 説明 |
+|----------|--------|------|
+| API | 8010 | FastAPI REST API |
+| Streamlit | 8501 | Web UI（提出フォーム、ジョブ監視） |
+| MLflow | 5010 | 実験管理UI |
+| Redis | 6379 | ジョブキュー |
+| Worker | - | GPU学習・評価ワーカー |
 
 ## 使用方法
 
@@ -141,13 +141,13 @@ curl http://localhost:8010/jobs/xyz789/results \
 
 ### エンドポイント一覧
 
-| メソッド | エンドポイント           | 説明                                  |
-| -------- | ------------------------ | ------------------------------------- |
-| POST     | `/submissions`           | 提出を作成                            |
-| POST     | `/jobs`                  | ジョブを投入                          |
-| GET      | `/jobs/{job_id}/status`  | ジョブ状態を取得                      |
-| GET      | `/jobs/{job_id}/logs`    | ジョブログを取得                      |
-| GET      | `/jobs/{job_id}/results` | ジョブ結果を取得（MLflow リンク含む） |
+| メソッド | エンドポイント | 説明 |
+|---------|---------------|------|
+| POST | `/submissions` | 提出を作成 |
+| POST | `/jobs` | ジョブを投入 |
+| GET | `/jobs/{job_id}/status` | ジョブ状態を取得 |
+| GET | `/jobs/{job_id}/logs` | ジョブログを取得 |
+| GET | `/jobs/{job_id}/results` | ジョブ結果を取得（MLflow リンク含む） |
 
 詳細は `http://localhost:8010/docs` の OpenAPI 仕様を参照してください。
 

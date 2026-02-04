@@ -9,8 +9,8 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         libgl1 \
         libglib2.0-0 \
-        zip \
-        unzip && \
+        git-lfs && \
+    git lfs install --system && \
     rm -rf /var/lib/apt/lists/*
 
 # Configure matplotlib cache directory

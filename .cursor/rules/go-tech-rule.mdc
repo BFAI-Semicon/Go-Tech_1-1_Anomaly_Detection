@@ -8,4 +8,4 @@ alwaysApply: true
 
 ## Rules
 
-- Markdownを作成・更新する際は、.markdownlint.jsonにおける除外項目を除くmarkdownlintのメッセージを必ず解消する。
+- Markdownを作成・更新する際は、markdownlintのメッセージを必ず解消する。

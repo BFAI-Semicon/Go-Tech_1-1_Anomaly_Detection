@@ -10,7 +10,7 @@ Clean-lite設計（ドメイン/ポート/アダプタ）を採用し、ドメ�
 
 **Location**: `/src/domain/`  
 **Purpose**: ビジネスロジック・ユースケース（外部実装に非依存）  
-**Example**: `CreateSubmission`, `AddSubmissionFile`, `GetSubmissionFiles`, `EnqueueJob`, `GetJobStatus`, `GetJobResults`
+**Example**: `CreateSubmission`, `EnqueueJob`, `GetJobStatus`, `GetResults`
 
 ### ポート層（抽象インタフェース）
 
@@ -18,28 +18,19 @@ Clean-lite設計（ドメイン/ポート/アダプタ）を採用し、ドメ�
 **Purpose**: ドメインが依存する抽象インタフェース  
 **Example**:
 
-- `StoragePort`: 提出ファイル保存/参照/追加/一覧取得
+- `StoragePort`: 提出ファイル保存/参照
 - `JobQueuePort`: ジョブ投入/取り出し
 - `JobStatusPort`: 状態の保存/参照
 - `TrackingPort`: メトリクス記録・`run_id` 生成（Workerのみ使用）
 
-### 設定管理層
-
-**Location**: `/src/config.py`  
-**Purpose**: 環境変数ベースの設定値を関数で一元管理する。  
-レート制限や同時実行制限などの設定値を環境変数から取得し、デフォルト値を関数内で定義する。
-
 ### レート制限層
 
 **Location**: `/src/ports/rate_limit_port.py` + `/src/adapters/redis_rate_limit_adapter.py`  
-**Purpose**: ユーザーごとの提出頻度と同時実行ジョブ数を制御する。  
-API 側で Redis カウンター（`leaderboard:rate:{user_id}`）を参照し、3600 秒の時間ウィンドウ内で 50 回を超える提出を拒否する。
-**Enhanced Pattern**:
+**Purpose**: ユーザーごとの提出頻度を制御する。  
+API 側で Redis カウンター（`leaderboard:rate:{user_id}`）を参照し、3600 秒の時間ウィンドウ内で 10 回を超える提出を拒否する。
+**Pattern**:
 
-- **Atomic Concurrency + Rate Limiting**: `try_increment_with_concurrency_check()` で同時実行数制限とレート制限をLuaスクリプトでアトミックにチェック・更新
-- **Adapter Interdependency**: `RedisRateLimitAdapter` が `JobStatusPort` に依存し、`count_running()` でリアルタイムの実行中ジョブ数を取得
-- **Improved Error Handling**: ジョブ作成失敗時のカウンターロールバック（`decrement_submission()`）で正確な制限管理を実現
-- **Basic Implementation**: `RateLimitPort.increment_submission` は `RedisRateLimitAdapter` を使って `INCR` + `EXPIRE` で値を更新する。  
+- `RateLimitPort.increment_submission` は `RedisRateLimitAdapter` を使って `INCR` + `EXPIRE` で値を更新する。  
   TTL 3600 秒でリセットされ、`get_submission_count` は現在値を API の再投入やワーカーの判断に返す。
 - `EnqueueJob` では `RateLimitPort` を先行して呼び出し、制限違反を検知する。  
   合格すれば `JobQueuePort` と `JobStatusPort` に渡してキュー投入し、公平性を維持する。
@@ -61,9 +52,7 @@ API 側で Redis カウンター（`leaderboard:rate:{user_id}`）を参照し�
 **Purpose**: REST API エンドポイント、認証、バリデーション、レート制限  
 **Example**:
 
-- `POST /submissions`: 提出受付（単一ファイル or 一括アップロード、順次アップロード対応）
-- `POST /submissions/{id}/files`: 既存submissionへの個別ファイル追加（順次アップロード）
-- `GET /submissions/{id}/files`: アップロード済みファイル一覧取得（順次アップロード対応）
+- `POST /submissions`: 提出受付
 - `POST /jobs`: ジョブ投入
 - `GET /jobs/{id}/status|logs|results`: 状態・ログ・結果取得
 - `Authorization: Bearer <token>` ヘッダーを必須とし、`API_TOKENS` 環境変数のカンマ区切りリストと照合してトークンを検証。
@@ -141,20 +130,17 @@ API 側で Redis カウンター（`leaderboard:rate:{user_id}`）を参照し�
 
 ### ドキュメント構成
 
-**Location**: `LeadersBoard/` + `LeadersBoard/docs/` + `docs/`  
-**Purpose**: プロジェクトドキュメント（セットアップ、API仕様、デプロイ手順、調査資料）  
+**Location**: `LeadersBoard/` + `LeadersBoard/docs/`  
+**Purpose**: プロジェクトドキュメント（セットアップ、API仕様、デプロイ手順）  
 **Pattern**:
 
-- `README.md`: プロジェクト概要、クイックスタート、使用方法、API概要（開発者・運用者向け）
-- `README_user.md`: 投稿者向けガイド（API Token、投稿方法、結果確認、サンプルコード、FAQ）
+- `README.md`: プロジェクト概要、クイックスタート、使用方法、API概要
 - `docs/api.md`: 詳細API仕様（エンドポイント、認証、レート制限、投稿者コード規約）
 - `docs/deployment.md`: デプロイ手順（ローカル/本番、シングル/マルチノード、バックアップ、モニタリング）
-- `docs/Survey/`: 関連論文調査・分析資料（異常検知分野の最新研究動向）
 
 **Documentation Principle**:
 
-- README.md: 5分で理解できる概要とクイックスタート（技術者向け）
-- README_user.md: プラットフォーム利用者向けの完全ガイド（非技術者でも理解できる）
+- README.md: 5分で理解できる概要とクイックスタート
 - docs/api.md: API利用者向けの完全なリファレンス
 - docs/deployment.md: 運用者向けの実践的な手順書
 
@@ -233,11 +219,9 @@ from src.adapters.filesystem_storage_adapter import FileSystemStorageAdapter
 - **ドメイン**: ビジネスロジック（外部実装に非依存）
 - **ポート**: 抽象インタフェース（実装詳細を隠蔽）
 - **アダプタ**: 具体実装（差し替え可能）
-- **EnqueueJob**: `RateLimitPort` で `MAX_SUBMISSIONS_PER_HOUR = 50` と
-  `MAX_CONCURRENT_RUNNING = 2` をアトミックに検証し、
-  Redis カウンターが示す提出数を超えないときだけ `JobQueuePort` と `JobStatusPort` に渡す。
-  **Enhanced Validation**: ジョブ投入前に `entrypoint` と `config_file` の存在を確認し、完全性検証を実施。
-  **Error Handling**: ジョブ作成失敗時のカウンターロールバックで正確な制限管理を実現。
+- **EnqueueJob**: `RateLimitPort` で `MAX_SUBMISSIONS_PER_HOUR = 10` と  
+  `MAX_CONCURRENT_RUNNING = 1` を順番に検証し、  
+  Redis カウンターが示す提出数を超えないときだけ `JobQueuePort` と `JobStatusPort` に渡す。  
   ドメインでレート制限ロジックを分離することで API/Worker はリミッタの内部実装に依存しない。
 
 ### テスト戦略
@@ -245,16 +229,16 @@ from src.adapters.filesystem_storage_adapter import FileSystemStorageAdapter
 - **ユニットテスト**: ドメイン・ポート実装（モックアダプタ使用）
   - **Location**: `/tests/unit/`
   - **Focus**: ドメインロジック・アダプタの単体テスト
-  - **Count**: 148件
+  - **Count**: 55件
 - **統合テスト**: docker-compose環境でエンドツーエンド（実Redis・MLflow使用）
   - **Location**: `/tests/integration/`
   - **Coverage**: エンドツーエンドフロー、metrics.json読み取り、セキュリティ（パストラバーサル）、エラーハンドリング（OOM、タイムアウト、metrics.json不在/不正）
-  - **Count**: 26件
+  - **Count**: 10件
 - **境界テスト**: ファイルサイズ上限、タイムアウト、重複投入、OOM等
-- **Overall Coverage**: 93%（目標80%大幅達成）
-- **Total Tests**: 174件
+- **Overall Coverage**: 90.8%（目標80%達成）
+- **Total Tests**: 65件
 
 ## Maintenance
 
-- updated_at: 2026-01-20
-- reason: 順次ファイルアップロード機能のAPIエンドポイントとテスト統計の更新
+- updated_at: 2025-12-22
+- reason: ドキュメント構成パターン追加（README.md拡充、API仕様、デプロイ手順の文書化完了）

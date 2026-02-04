@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from collections.abc import Callable, Generator
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -18,31 +17,8 @@ from src.api import submissions as submissions_module
 from src.api.main import app
 from src.domain.create_submission import CreateSubmission
 from src.domain.enqueue_job import EnqueueJob
-from src.ports.rate_limit_port import RateLimitPort
 from src.ports.tracking_port import TrackingPort
 from src.worker.job_worker import JobWorker
-
-
-class MockRateLimitAdapter(RateLimitPort):
-    """Mock RateLimitPort for integration tests that always allows operations."""
-
-    def increment_submission(self, user_id: str) -> int:
-        return 1
-
-    def get_submission_count(self, user_id: str) -> int:
-        return 0
-
-    def decrement_submission(self, user_id: str) -> int:
-        return 0
-
-    def try_increment_submission(self, user_id: str, max_count: int) -> bool:
-        return True
-
-    def try_increment_with_concurrency_check(
-        self, user_id: str, max_concurrency: int, max_rate: int
-    ) -> bool:
-        # 統合テストでは常に許可
-        return True
 
 
 class MockTrackingAdapter(TrackingPort):
@@ -86,7 +62,7 @@ class IntegrationContext:
 
 
 @pytest.fixture
-def integration_context(tmp_path: Path) -> Generator[IntegrationContext]:
+def integration_context(tmp_path: Path) -> IntegrationContext:
     fake_redis = fakeredis.FakeRedis()
     submissions_root = tmp_path / "submissions"
     logs_root = tmp_path / "logs"
@@ -94,20 +70,16 @@ def integration_context(tmp_path: Path) -> Generator[IntegrationContext]:
     storage = FileSystemStorageAdapter(submissions_root, logs_root=logs_root)
     queue_adapter = RedisJobQueueAdapter(fake_redis)
     status_adapter = RedisJobStatusAdapter(fake_redis)
-    rate_limit_adapter = MockRateLimitAdapter()  # Use mock to avoid Redis eval issues
+    rate_limit_adapter = RedisRateLimitAdapter(fake_redis)
     tracking_adapter = MockTrackingAdapter()
     job_worker = JobWorker(queue_adapter, status_adapter, storage, tracking_adapter, artifacts_root=artifacts_root)
 
-    mock_rate_limit = MockRateLimitAdapter()
-    mock_enqueue_job = EnqueueJob(storage, queue_adapter, status_adapter, mock_rate_limit)
-    overrides: dict[Callable[..., Any], Callable[..., Any]] = {
+    overrides = {
         submissions_module.get_storage: lambda: storage,
         jobs_module.get_storage: lambda: storage,
         submissions_module.get_current_user: lambda: "integration-user",
         jobs_module.get_current_user: lambda: "integration-user",
         jobs_module.get_redis_client: lambda: fake_redis,
-        jobs_module.get_rate_limit: lambda redis_client=None, job_status=None: mock_rate_limit,
-        jobs_module.get_enqueue_job: lambda storage=None, queue=None, status=None, redis_client=None: mock_enqueue_job,
     }
     app.dependency_overrides.update(overrides)
     client = TestClient(app)

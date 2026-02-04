@@ -18,7 +18,7 @@ LeadersBoard のデプロイ手順書
 nvidia-smi
 
 # Docker で GPU が認識されることを確認
-docker run --rm --gpus all nvidia/cuda:12.8.0-base-ubuntu22.04 nvidia-smi
+docker run --rm --gpus all nvidia/cuda:12.0-base nvidia-smi
 ```
 
 ## ローカル環境デプロイ
@@ -103,7 +103,7 @@ docker-compose down -v
 
 最小構成。開発・検証環境向け。
 
-```text
+```
 ┌─────────────────────────────────────┐
 │  Docker Host (GPU required)         │
 │  ├─ API Container                   │
@@ -118,7 +118,7 @@ docker-compose down -v
 
 スケールアウト対応。本番環境向け。
 
-```text
+```
 ┌─────────────────┐  ┌──────────────────┐
 │  API Nodes      │  │  Worker Nodes    │
 │  (Load Balanced)│  │  (GPU required)  │
@@ -256,8 +256,8 @@ Docker volumes を使用：
 
 ```yaml
 volumes:
-  shared: # 提出ファイル・アーティファクト
-  redis-data: # Redis AOF
+  shared:      # 提出ファイル・アーティファクト
+  redis-data:  # Redis AOF
 ```
 
 ### 本番環境
