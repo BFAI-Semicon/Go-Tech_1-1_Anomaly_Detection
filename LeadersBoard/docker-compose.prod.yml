@@ -1,0 +1,9 @@
+services:
+  api:
+    image: ghcr.io/bfai-semicon/go-tech-1-1-anomaly/api:main
+
+  worker:
+    image: ghcr.io/bfai-semicon/go-tech-1-1-anomaly/worker:main
+
+  streamlit:
+    image: ghcr.io/bfai-semicon/go-tech-1-1-anomaly/streamlit:main
