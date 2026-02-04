@@ -1,0 +1,10 @@
+jobs:
+  deploy:
+    runs-on: [self-hosted, Linux, X64, prod]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy
+        run: |
+          cd /srv/app
+          docker compose pull
+          docker compose up -d --no-build
