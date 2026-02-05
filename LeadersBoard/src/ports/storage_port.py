@@ -37,6 +37,14 @@ class StoragePort(ABC):
         ...
 
     @abstractmethod
-    def load_logs(self, job_id: str) -> str:
-        """ジョブログを取得"""
+    def load_logs(self, job_id: str, tail_lines: int | None = None) -> str:
+        """ジョブログを取得
+
+        Args:
+            job_id: ジョブID
+            tail_lines: 取得する最終行数（Noneで全行）
+
+        Returns:
+            ログ内容
+        """
         ...

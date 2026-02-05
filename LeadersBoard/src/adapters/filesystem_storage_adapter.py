@@ -63,11 +63,32 @@ class FileSystemStorageAdapter(StoragePort):
         entry_path = self.submissions_root / submission_id / entrypoint
         return entry_path.exists()
 
-    def load_logs(self, job_id: str) -> str:
+    def load_logs(self, job_id: str, tail_lines: int | None = None) -> str:
+        """ジョブのログを読み取る。
+
+        Args:
+            job_id: ジョブID
+            tail_lines: 取得する最終行数（Noneで全行）
+
+        Returns:
+            ログ内容
+
+        Raises:
+            FileNotFoundError: ログファイルが存在しない場合
+        """
         log_path = self.logs_root / f"{job_id}.log"
         if not log_path.exists():
             raise FileNotFoundError(log_path)
-        return log_path.read_text()
+
+        if tail_lines is None:
+            return log_path.read_text()
+
+        # tail処理: 最後のN行のみを返す
+        from collections import deque
+
+        with open(log_path, encoding="utf-8") as f:
+            last_lines = deque(f, maxlen=tail_lines)
+        return "".join(last_lines)
 
     def _determine_filename(self, file: BinaryIO) -> str:
         candidate = getattr(file, "filename", None) or getattr(file, "name", None)

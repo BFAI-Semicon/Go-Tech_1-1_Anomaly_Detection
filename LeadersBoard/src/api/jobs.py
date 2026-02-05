@@ -118,8 +118,23 @@ async def get_job_logs(
     job_id: str,
     user_id: str = Depends(get_current_user),
     storage: StoragePort = storage_dep,
+    tail_lines: int | None = None,
 ) -> dict[str, str]:
-    return {"job_id": job_id, "logs": storage.load_logs(job_id)}
+    """ジョブのログを取得する。
+
+    実行中のジョブでもログファイルが存在すれば内容を返す。
+    ログファイルが存在しない場合は空文字列を返す。
+
+    Args:
+        job_id: ジョブID
+        tail_lines: 取得する最終行数（省略時は全行）
+    """
+    try:
+        logs = storage.load_logs(job_id, tail_lines=tail_lines)
+    except FileNotFoundError:
+        # ログファイルがまだ存在しない場合は空文字列を返す
+        logs = ""
+    return {"job_id": job_id, "logs": logs}
 
 
 @router.get("/jobs/{job_id}/results")

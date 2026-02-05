@@ -109,3 +109,56 @@ def test_get_status_color_returns_correct_emoji() -> None:
     assert streamlit_app.get_status_color("running") == "⏳"
     assert streamlit_app.get_status_color("pending") == "⏳"
     assert streamlit_app.get_status_color("unknown") == "❓"
+
+
+@patch("src.streamlit.app.requests.get")
+def test_fetch_job_logs_without_tail_lines(mock_get: MagicMock) -> None:
+    """tail_linesなしでログを取得できることを確認"""
+    mock_get.return_value.json.return_value = {"logs": "full log content"}
+    mock_get.return_value.raise_for_status = MagicMock()
+
+    result = streamlit_app.fetch_job_logs(
+        api_url="http://api:8010",
+        token="devtoken",
+        job_id="job-1",
+    )
+
+    assert result == "full log content"
+    mock_get.assert_called_once()
+    args, kwargs = mock_get.call_args
+    assert args[0] == "http://api:8010/jobs/job-1/logs"
+    assert kwargs["params"] == {}
+
+
+@patch("src.streamlit.app.requests.get")
+def test_fetch_job_logs_with_tail_lines(mock_get: MagicMock) -> None:
+    """tail_linesパラメータでログを取得できることを確認"""
+    mock_get.return_value.json.return_value = {"logs": "last 100 lines"}
+    mock_get.return_value.raise_for_status = MagicMock()
+
+    result = streamlit_app.fetch_job_logs(
+        api_url="http://api:8010",
+        token="devtoken",
+        job_id="job-1",
+        tail_lines=100,
+    )
+
+    assert result == "last 100 lines"
+    mock_get.assert_called_once()
+    args, kwargs = mock_get.call_args
+    assert kwargs["params"] == {"tail_lines": 100}
+
+
+@patch("src.streamlit.app.requests.get")
+def test_fetch_job_logs_returns_empty_on_missing_logs_key(mock_get: MagicMock) -> None:
+    """logsキーがない場合は空文字列を返すことを確認"""
+    mock_get.return_value.json.return_value = {"job_id": "job-1"}
+    mock_get.return_value.raise_for_status = MagicMock()
+
+    result = streamlit_app.fetch_job_logs(
+        api_url="http://api:8010",
+        token="devtoken",
+        job_id="job-1",
+    )
+
+    assert result == ""

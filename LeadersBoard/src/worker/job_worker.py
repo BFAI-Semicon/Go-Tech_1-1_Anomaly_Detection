@@ -104,15 +104,16 @@ class JobWorker:
             logger.info(f"Output directory: {output_dir}")
             logger.info(f"Executing command: {' '.join(command)}")
 
-            subprocess.run(command, check=True, capture_output=True, timeout=timeout_seconds)
+            # リアルタイムログ出力用のログファイルパスを取得
+            log_path = self._get_log_path(job_id)
+
+            # subprocess.Popenでリアルタイムログ出力を実装
+            self._execute_subprocess(command, log_path, timeout_seconds)
 
             # Load metrics.json and log to MLflow
             logger.info(f"Loading metrics from {output_dir}/metrics.json")
             metrics_data = self._load_metrics(output_dir)
             run_id = self._record_metrics(job_id, metrics_data, output_dir)
-
-            # Copy training.log to logs directory for API access
-            self._save_job_log(job_id, output_dir)
 
             logger.info(f"Job {job_id} completed successfully! MLflow run_id: {run_id}")
             self.status.update(job_id, JobStatus.COMPLETED, run_id=run_id)
@@ -132,6 +133,62 @@ class JobWorker:
             logger.error(f"Job {job_id} failed: {error_message}")
             self.status.update(job_id, JobStatus.FAILED, error=error_message)
             raise
+
+    def _get_log_path(self, job_id: str) -> Path:
+        """ログファイルのパスを取得する。
+
+        Returns:
+            ログファイルのパス（logs_rootが設定されていない場合はartifacts_root配下）
+        """
+        if hasattr(self.storage, "logs_root") and self.storage.logs_root:
+            return self.storage.logs_root / f"{job_id}.log"
+        return self.artifacts_root / job_id / "training.log"
+
+    def _execute_subprocess(
+        self,
+        command: list[str],
+        log_path: Path,
+        timeout_seconds: float | None,
+    ) -> None:
+        """サブプロセスを実行し、出力をログファイルにストリーミング。
+
+        Args:
+            command: 実行するコマンド
+            log_path: ログ出力先ファイルパス
+            timeout_seconds: タイムアウト秒数（Noneで無制限）
+
+        Raises:
+            subprocess.TimeoutExpired: タイムアウト時
+            subprocess.CalledProcessError: 非ゼロ終了コード時
+        """
+        # ログディレクトリを作成
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # 環境変数を設定（Pythonのバッファリングを無効化）
+        env = os.environ.copy()
+        env["PYTHONUNBUFFERED"] = "1"
+
+        # ログファイルを開いてサブプロセスを起動
+        with open(log_path, "w", encoding="utf-8") as log_file:
+            process = subprocess.Popen(
+                command,
+                stdout=log_file,
+                stderr=subprocess.STDOUT,
+                env=env,
+            )
+            try:
+                process.wait(timeout=timeout_seconds)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait()
+                raise
+
+            if process.returncode != 0:
+                # エラー時はログファイルからstderrを読み取る
+                stderr_content = log_path.read_text() if log_path.exists() else ""
+                raise subprocess.CalledProcessError(
+                    process.returncode, command, stderr=stderr_content.encode()
+                )
 
     def _build_command(
         self, submission_dir: Path, entrypoint: str, config_file: str, job_id: str

@@ -70,3 +70,67 @@ def test_load_logs_reads_from_log_root(tmp_path: Path) -> None:
 
     adapter = FileSystemStorageAdapter(root, logs_root=logs_root)
     assert adapter.load_logs("job-42").strip() == "buffered log"
+
+
+def test_load_logs_with_tail_lines_returns_last_n_lines(tmp_path: Path) -> None:
+    """tail_lines パラメータを指定すると最後のN行のみを返す"""
+    root = tmp_path / "submissions"
+    logs_root = tmp_path / "logs"
+    logs_root.mkdir()
+    log_file = logs_root / "job-tail.log"
+    # 10行のログを作成
+    lines = [f"Line {i}" for i in range(1, 11)]
+    log_file.write_text("\n".join(lines))
+
+    adapter = FileSystemStorageAdapter(root, logs_root=logs_root)
+
+    # 最後の3行を取得
+    result = adapter.load_logs("job-tail", tail_lines=3)
+    result_lines = result.strip().split("\n")
+    assert len(result_lines) == 3
+    assert result_lines == ["Line 8", "Line 9", "Line 10"]
+
+
+def test_load_logs_with_tail_lines_returns_all_when_file_smaller(tmp_path: Path) -> None:
+    """ファイルの行数がtail_lines未満の場合は全行を返す"""
+    root = tmp_path / "submissions"
+    logs_root = tmp_path / "logs"
+    logs_root.mkdir()
+    log_file = logs_root / "job-small.log"
+    log_file.write_text("Line 1\nLine 2")
+
+    adapter = FileSystemStorageAdapter(root, logs_root=logs_root)
+
+    # 1000行を要求しても2行しかないのでその2行を返す
+    result = adapter.load_logs("job-small", tail_lines=1000)
+    result_lines = result.strip().split("\n")
+    assert len(result_lines) == 2
+
+
+def test_load_logs_tail_lines_none_returns_all(tmp_path: Path) -> None:
+    """tail_lines=None の場合は全行を返す（既存動作との互換性）"""
+    root = tmp_path / "submissions"
+    logs_root = tmp_path / "logs"
+    logs_root.mkdir()
+    log_file = logs_root / "job-full.log"
+    lines = [f"Line {i}" for i in range(1, 101)]
+    log_file.write_text("\n".join(lines))
+
+    adapter = FileSystemStorageAdapter(root, logs_root=logs_root)
+
+    result = adapter.load_logs("job-full", tail_lines=None)
+    result_lines = result.strip().split("\n")
+    assert len(result_lines) == 100
+
+
+def test_load_logs_raises_file_not_found_when_missing(tmp_path: Path) -> None:
+    """ログファイルが存在しない場合はFileNotFoundErrorを送出"""
+    root = tmp_path / "submissions"
+    logs_root = tmp_path / "logs"
+    logs_root.mkdir()
+
+    adapter = FileSystemStorageAdapter(root, logs_root=logs_root)
+
+    import pytest
+    with pytest.raises(FileNotFoundError):
+        adapter.load_logs("nonexistent-job")

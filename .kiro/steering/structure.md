@@ -144,6 +144,16 @@ API 側で Redis カウンター（`leaderboard:rate:{user_id}`）を参照し�
 - docs/api.md: API利用者向けの完全なリファレンス
 - docs/deployment.md: 運用者向けの実践的な手順書
 
+### Demo構成
+
+**Location**: `LeadersBoard/demo*/`  
+**Purpose**: anomalibモデルの学習・検証デモエントリポイント  
+**Example**:
+
+- `demo/`: 基本的な anomalib デモ構成
+- `demo_anomalib/`: Anomalib Padim モデルのデモ（config.yaml + main.py）
+- `demo_anomalib2/`: パフォーマンスメトリクス対応の Anomalib Padim デモ（GPUメモリ使用量・学習/推論時間をログ記録）
+
 ### Docker構成
 
 **Location**: `LeadersBoard/` + `.devcontainer/`  
@@ -240,5 +250,5 @@ from src.adapters.filesystem_storage_adapter import FileSystemStorageAdapter
 
 ## Maintenance
 
-- updated_at: 2025-12-22
-- reason: ドキュメント構成パターン追加（README.md拡充、API仕様、デプロイ手順の文書化完了）
+- updated_at: 2026-02-04
+- reason: demo_anomalib2/ ディレクトリの追加（パフォーマンスメトリクス対応のAnomalib Padimデモ）

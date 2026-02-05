@@ -36,3 +36,4 @@ ML実験プラットフォーム「LeadersBoard」は、外部からの投稿（
 - **Test Count**: 62件（ユニット）+ 10件（統合）
 - **UI Capabilities**: 提出フォーム、ジョブ一覧（自動更新対応）、ステータス監視、ログ表示、MLflowリンク生成
 - **Documentation**: README.md、API仕様（docs/api.md）、デプロイ手順（docs/deployment.md）完備
+- **Specifications**: streamlit-realtime-worker-logs 仕様初期化完了
