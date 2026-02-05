@@ -91,7 +91,7 @@ def run_training(config: DictConfig, output_dir: Path) -> None:
     if torch.cuda.is_available():
         torch.cuda.reset_peak_memory_stats()
         initial_memory = torch.cuda.memory_allocated() / 1024**2  # MB
-        LOGGER.info(".1f")
+        LOGGER.info(f"Initial GPU memory: {initial_memory:.1f} MB")
         performance_metrics["initial_gpu_memory_mb"] = initial_memory
 
     # 1. データモジュール、モデル、トレーナーを取得
@@ -119,7 +119,7 @@ def run_training(config: DictConfig, output_dir: Path) -> None:
 
     training_time = training_end_time - training_start_time
     performance_metrics["training_time_seconds"] = training_time
-    LOGGER.info(".2f")
+    LOGGER.info(f"Training completed in {training_time:.2f} seconds")
 
     # 学習後のGPUメモリ測定
     if torch.cuda.is_available():
@@ -127,8 +127,8 @@ def run_training(config: DictConfig, output_dir: Path) -> None:
         current_memory = torch.cuda.memory_allocated() / 1024**2  # MB
         performance_metrics["peak_gpu_memory_mb"] = peak_memory
         performance_metrics["final_gpu_memory_mb"] = current_memory
-        LOGGER.info(".1f")
-        LOGGER.info(".1f")
+        LOGGER.info(f"Peak GPU memory: {peak_memory:.1f} MB")
+        LOGGER.info(f"Final GPU memory: {current_memory:.1f} MB")
 
     # 3. テストデータで評価
     LOGGER.info("Evaluating on test data")
@@ -154,8 +154,8 @@ def run_training(config: DictConfig, output_dir: Path) -> None:
     if inference_time > 0 and num_test_samples > 0:
         fps = num_test_samples / inference_time
         performance_metrics["inference_fps"] = fps
-        LOGGER.info(".2f")
-        LOGGER.info(".2f")
+        LOGGER.info(f"Inference time: {inference_time:.2f} seconds")
+        LOGGER.info(f"Inference FPS: {fps:.2f}")
     else:
         performance_metrics["inference_fps"] = 0.0
         LOGGER.warning("Unable to calculate FPS: invalid inference time or test samples")
