@@ -412,3 +412,55 @@ def test_duplicate_job_submission_is_idempotent(integration_context) -> None:
     # Both should return valid job_ids (system handles idempotency)
     assert job_id1
     assert job_id2
+
+
+def test_logs_api_returns_empty_when_no_log_file(integration_context) -> None:
+    """ログファイルが存在しない場合は空文字列を返すことを確認"""
+    client = integration_context.client
+    submission_id, status_code = _post_submission(client, _runner_script("run-id-nolog"))
+    assert status_code == 201
+
+    job_response = client.post(
+        "/jobs",
+        headers=AUTH_HEADER,
+        json={"submission_id": submission_id, "config": {"lr": 0.01}},
+    )
+    assert job_response.status_code == 202
+    job_id = job_response.json()["job_id"]
+
+    # ジョブを実行する前にログを取得（ログファイルはまだ存在しない）
+    logs_response = client.get(f"/jobs/{job_id}/logs", headers=AUTH_HEADER)
+    assert logs_response.status_code == 200
+    assert logs_response.json()["logs"] == ""
+
+
+def test_logs_api_with_tail_lines_parameter(integration_context) -> None:
+    """tail_linesパラメータでログの最終N行を取得できることを確認"""
+    client = integration_context.client
+    submission_id, status_code = _post_submission(client, _runner_script("run-id-tail"))
+    assert status_code == 201
+
+    job_response = client.post(
+        "/jobs",
+        headers=AUTH_HEADER,
+        json={"submission_id": submission_id, "config": {"lr": 0.01}},
+    )
+    assert job_response.status_code == 202
+    job_id = job_response.json()["job_id"]
+
+    # ログファイルを作成（10行）
+    log_path = integration_context.logs_root / f"{job_id}.log"
+    lines = [f"Line {i}" for i in range(1, 11)]
+    log_path.write_text("\n".join(lines))
+
+    # 最後の3行を取得
+    logs_response = client.get(
+        f"/jobs/{job_id}/logs",
+        params={"tail_lines": 3},
+        headers=AUTH_HEADER,
+    )
+    assert logs_response.status_code == 200
+    logs_content = logs_response.json()["logs"]
+    logs_lines = logs_content.strip().split("\n")
+    assert len(logs_lines) == 3
+    assert logs_lines == ["Line 8", "Line 9", "Line 10"]

@@ -61,13 +61,26 @@ def fetch_job_status(api_url: str, token: str, job_id: str) -> dict[str, Any] | 
     return response.json()
 
 
-def fetch_job_logs(api_url: str, token: str, job_id: str) -> str:
-    """GET /jobs/{job_id}/logs を取得する。"""
+def fetch_job_logs(
+    api_url: str, token: str, job_id: str, tail_lines: int | None = None
+) -> str:
+    """GET /jobs/{job_id}/logs を取得する。
+
+    Args:
+        api_url: API URL
+        token: 認証トークン
+        job_id: ジョブID
+        tail_lines: 取得する最終行数（省略時は全行）
+    """
     url = api_url.rstrip("/") + f"/jobs/{job_id}/logs"
     headers = {"Authorization": f"Bearer {token}"}
-    response = requests.get(url, headers=headers, timeout=15)
+    params: dict[str, int] = {}
+    if tail_lines is not None:
+        params["tail_lines"] = tail_lines
+    response = requests.get(url, headers=headers, params=params, timeout=15)
     response.raise_for_status()
-    return response.text
+    data = response.json()
+    return data.get("logs", "")
 
 
 def add_job_to_state(state: dict[str, Any], job: dict[str, Any]) -> list[dict[str, Any]]:
@@ -158,11 +171,54 @@ def _render_submission_form(api_url: str, mlflow_url: str) -> None:
             st.error(f"Job enqueue failed: {exc}")
 
 
+def _render_job_logs(
+    api_url: str,
+    token: str,
+    job_id: str,
+    is_running: bool,
+) -> None:
+    """ジョブのログを表示する。
+
+    Args:
+        api_url: API URL
+        token: 認証トークン
+        job_id: ジョブID
+        is_running: 実行中かどうか
+    """
+    if st is None:  # pragma: no cover
+        return
+
+    if not token:
+        st.warning("API Tokenが必要です")
+        return
+
+    # 実行中のジョブは最新100行のみ取得（パフォーマンス最適化）
+    tail_lines = 100 if is_running else None
+
+    try:
+        logs = fetch_job_logs(api_url, token, job_id, tail_lines=tail_lines)
+        if logs:
+            st.code(logs, language="log", line_numbers=True)
+            if is_running and tail_lines:
+                st.caption(f"最新 {tail_lines} 行を表示中（リアルタイム更新）")
+        else:
+            st.info("ログはまだ出力されていません。")
+    except Exception as exc:  # pragma: no cover
+        st.error(f"ログ取得に失敗しました: {exc}")
+
+
 def _render_jobs(api_url: str, mlflow_url: str) -> None:
     if st is None:  # pragma: no cover
         return
 
-    st.header("ジョブ一覧")
+    # ヘッダーと手動更新ボタン
+    header_col, refresh_col = st.columns([6, 1])
+    with header_col:
+        st.header("ジョブ一覧")
+    with refresh_col:
+        if st.button("🔄", help="手動更新"):
+            st.rerun()
+
     token = st.session_state.get("token_input", "")
     jobs: list[dict[str, Any]] = st.session_state.get("jobs", [])
     if not jobs:
@@ -181,63 +237,65 @@ def _render_jobs(api_url: str, mlflow_url: str) -> None:
     for job in list(jobs):
         job_id = cast(str | None, job.get("job_id"))
         submission_id = job.get("submission_id")
-        col1, col2, col3 = st.columns([3, 3, 2])
-        with col1:
-            st.markdown(f"**Job ID:** {job_id}")
-            st.caption(f"Submission: {submission_id}")
-        with col2:
-            status_data = None
-            # 実行中ジョブがある場合のみAPIからステータスを取得（パフォーマンス最適化）
-            if fetch_status and token and job_id:
-                try:
-                    status_data = fetch_job_status(api_url, token, job_id)
-                except Exception:  # pragma: no cover
-                    status_data = None
-            status_text = str(status_data.get("status") if status_data else job.get("status", "unknown"))
 
-            # 実行中ジョブの検出
-            if status_text in ("pending", "running"):
-                running_jobs_detected = True
+        # ジョブカードの表示
+        with st.container():
+            col1, col2 = st.columns([3, 5])
+            with col1:
+                st.markdown(f"**Job ID:** `{job_id}`")
+                st.caption(f"Submission: {submission_id}")
 
-            # ステータス表示（色分け）
-            emoji = get_status_color(status_text)
-            st.markdown(f"{emoji} **{status_text}**")
+            with col2:
+                status_data = None
+                # 実行中ジョブがある場合のみAPIからステータスを取得（パフォーマンス最適化）
+                if fetch_status and token and job_id:
+                    try:
+                        status_data = fetch_job_status(api_url, token, job_id)
+                    except Exception:  # pragma: no cover
+                        status_data = None
+                status_text = str(
+                    status_data.get("status") if status_data else job.get("status", "unknown")
+                )
 
-            if status_data and status_data.get("run_id"):
-                link = build_mlflow_run_link(mlflow_url, status_data["run_id"])
-                st.markdown(f"[MLflow run]({link})")
-        with col3:
-            # 実行中またはpendingの場合は状態を表示
-            if status_text in ("pending", "running"):
-                st.caption(f"⏳ {status_text}...")
-            elif status_text in ("completed", "failed"):
-                # ジョブが終了している場合、expanderでログを表示（自動更新で閉じない）
-                with st.expander("📋 View Logs", expanded=False):
-                    if not token:
-                        st.warning("API Tokenが必要です")
-                    elif not job_id:
-                        st.warning("Job ID がありません")
-                    else:
-                        try:
-                            logs = fetch_job_logs(api_url, token, job_id)
-                            st.text_area(
-                                "Job Logs",
-                                logs,
-                                height=400,
-                                key=f"logs-content-{job_id}",
-                                label_visibility="collapsed"
-                            )
-                        except Exception as exc:  # pragma: no cover
-                            st.error(f"ログ取得に失敗しました: {exc}")
-            else:
-                st.caption(f"Status: {status_text}")
+                # セッションステートを更新
+                job["status"] = status_text
+
+                # 実行中ジョブの検出
+                if status_text in ("pending", "running"):
+                    running_jobs_detected = True
+
+                # ステータス表示（色分け）
+                emoji = get_status_color(status_text)
+                st.markdown(f"{emoji} **{status_text}**")
+
+                if status_data and status_data.get("run_id"):
+                    link = build_mlflow_run_link(mlflow_url, status_data["run_id"])
+                    st.markdown(f"[MLflow run]({link})")
+
+            # ログ表示エリア
+            if job_id:
+                is_running = status_text == "running"
+                is_completed = status_text in ("completed", "failed")
+
+                if is_running:
+                    # 実行中ジョブはリアルタイムログを表示
+                    with st.expander("📋 実行中のログ", expanded=True):
+                        _render_job_logs(api_url, token, job_id, is_running=True)
+                elif is_completed:
+                    # 完了/失敗ジョブは折りたたみでログを表示
+                    with st.expander("📋 ログを表示", expanded=False):
+                        _render_job_logs(api_url, token, job_id, is_running=False)
+
+            st.divider()
 
     # 自動更新の状態表示
     if running_jobs_detected:
         st.caption("⏳ 実行中のジョブがあります。5秒ごとに自動更新されます。")
     elif jobs:
         # 全ジョブが終了している場合
-        st.caption("✅ 全てのジョブが終了しました。新しいジョブを投稿すると自動更新が再開されます。")
+        st.caption(
+            "✅ 全てのジョブが終了しました。新しいジョブを投稿すると自動更新が再開されます。"
+        )
 
 
 def main() -> None:  # pragma: no cover - UI起動時に実行

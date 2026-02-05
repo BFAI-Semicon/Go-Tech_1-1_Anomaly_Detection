@@ -27,10 +27,15 @@ class DummyJobResultsUseCase:
 
 
 class DummyStorage:
-    def __init__(self, payload: str) -> None:
+    def __init__(self, payload: str, raise_not_found: bool = False) -> None:
         self.payload = payload
+        self.raise_not_found = raise_not_found
+        self.last_tail_lines: int | None = None
 
-    def load_logs(self, job_id: str) -> str:  # type: ignore[override]
+    def load_logs(self, job_id: str, tail_lines: int | None = None) -> str:  # type: ignore[override]
+        self.last_tail_lines = tail_lines
+        if self.raise_not_found:
+            raise FileNotFoundError(f"Log not found: {job_id}")
         return self.payload
 
 
@@ -101,3 +106,35 @@ def test_get_job_results_success() -> None:
 def test_requires_auth() -> None:
     response = client.get("/jobs/job-1/status")
     assert response.status_code == 401
+
+
+def test_get_job_logs_with_tail_lines() -> None:
+    """tail_linesパラメータがストレージに渡されることを検証"""
+    storage = DummyStorage("last lines only")
+    override_current_user()
+    override_storage(storage)
+
+    response = client.get(
+        "/jobs/job-1/logs",
+        params={"tail_lines": 100},
+        headers={"Authorization": "Bearer devtoken"},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"job_id": "job-1", "logs": "last lines only"}
+    assert storage.last_tail_lines == 100
+
+
+def test_get_job_logs_file_not_found_returns_empty() -> None:
+    """ログファイルが存在しない場合は空文字列を返す"""
+    storage = DummyStorage("", raise_not_found=True)
+    override_current_user()
+    override_storage(storage)
+
+    response = client.get(
+        "/jobs/job-1/logs",
+        headers={"Authorization": "Bearer devtoken"},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"job_id": "job-1", "logs": ""}

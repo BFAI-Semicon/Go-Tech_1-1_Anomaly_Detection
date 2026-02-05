@@ -35,8 +35,16 @@ class DummyStorage(StoragePort):
     def validate_entrypoint(self, submission_id: str, entrypoint: str) -> bool:
         return True
 
-    def load_logs(self, job_id: str) -> str:
+    def load_logs(self, job_id: str, tail_lines: int | None = None) -> str:
         return ""
+
+
+def create_mock_popen(returncode: int = 0) -> MagicMock:
+    """Popenモックを作成するヘルパー関数"""
+    mock_process = MagicMock()
+    mock_process.wait.return_value = None
+    mock_process.returncode = returncode
+    return MagicMock(return_value=mock_process)
 
 
 class DummyStatus(JobStatusPort):
@@ -124,7 +132,7 @@ def worker(storage: DummyStorage, status: DummyStatus, tracking: DummyTracking) 
     )
 
 
-def test_execute_job_runs_command(monkeypatch: Any, worker: JobWorker, status: DummyStatus, storage: DummyStorage, tracking: DummyTracking) -> None:
+def test_execute_job_runs_command(monkeypatch: Any, worker: JobWorker, status: DummyStatus, storage: DummyStorage, tracking: DummyTracking, tmp_path: Path) -> None:
     job = {
         "job_id": "job-1",
         "submission_id": "sub-1",
@@ -132,15 +140,18 @@ def test_execute_job_runs_command(monkeypatch: Any, worker: JobWorker, status: D
         "config_file": "config.yaml",
     }
 
+    # Setup logs_root
+    logs_root = tmp_path / "logs"
+    logs_root.mkdir(parents=True, exist_ok=True)
+    storage.logs_root = logs_root
+
     # Create metrics.json
     output_dir = worker.artifacts_root / job["job_id"]
     output_dir.mkdir(parents=True, exist_ok=True)
     metrics_file = output_dir / "metrics.json"
     metrics_file.write_text('{"params": {"method": "test"}, "metrics": {"auc": 0.9}}')
 
-    result = MagicMock()
-    result.stdout = b""
-    monkeypatch.setattr("src.worker.job_worker.subprocess.run", MagicMock(return_value=result))
+    monkeypatch.setattr("src.worker.job_worker.subprocess.Popen", create_mock_popen())
 
     worker.storage = storage
     worker.status = status
@@ -170,7 +181,12 @@ def test_execute_job_invalid_path_updates_status(worker: JobWorker, status: Dumm
     assert status.calls[-1][1] == JobStatus.FAILED
 
 
-def test_run_processes_job(monkeypatch: Any, storage: DummyStorage, status: DummyStatus, tracking: DummyTracking) -> None:
+def test_run_processes_job(monkeypatch: Any, storage: DummyStorage, status: DummyStatus, tracking: DummyTracking, tmp_path: Path) -> None:
+    # Setup logs_root
+    logs_root = tmp_path / "logs"
+    logs_root.mkdir(parents=True, exist_ok=True)
+    storage.logs_root = logs_root
+
     queue = DummyQueue(
         [
             {
@@ -196,9 +212,7 @@ def test_run_processes_job(monkeypatch: Any, storage: DummyStorage, status: Dumm
     metrics_file = output_dir / "metrics.json"
     metrics_file.write_text('{"params": {"method": "test"}, "metrics": {"auc": 0.9}}')
 
-    result = MagicMock()
-    result.stdout = b""
-    monkeypatch.setattr("src.worker.job_worker.subprocess.run", MagicMock(return_value=result))
+    monkeypatch.setattr("src.worker.job_worker.subprocess.Popen", create_mock_popen())
 
     timer = threading.Timer(0.1, worker.stop)
     timer.start()
@@ -207,22 +221,31 @@ def test_run_processes_job(monkeypatch: Any, storage: DummyStorage, status: Dumm
     assert status.calls[-1][1] == JobStatus.COMPLETED
 
 
-def test_execute_job_timeout_updates_status(monkeypatch: Any, worker: JobWorker, status: DummyStatus, storage: DummyStorage) -> None:
+def test_execute_job_timeout_updates_status(monkeypatch: Any, worker: JobWorker, status: DummyStatus, storage: DummyStorage, tmp_path: Path) -> None:
     job = {
         "job_id": "job-timeout",
         "submission_id": "sub-1",
         "entrypoint": "main.py",
         "config_file": "config.yaml",
-        "resource_class": "small",
+        "config": {"resource_class": "small"},
     }
+
+    # Setup logs_root
+    logs_root = tmp_path / "logs"
+    logs_root.mkdir(parents=True, exist_ok=True)
+    storage.logs_root = logs_root
+
     worker.storage = storage
     worker.status = status
     worker.queue = MagicMock()
 
-    def raise_timeout(*args: Any, **kwargs: Any) -> MagicMock:
-        raise subprocess.TimeoutExpired(cmd=args[0], timeout=kwargs.get("timeout", 0))
+    def mock_popen_timeout(*args: Any, **kwargs: Any) -> MagicMock:
+        mock_process = MagicMock()
+        mock_process.wait.side_effect = subprocess.TimeoutExpired(cmd=args[0], timeout=1800)
+        mock_process.kill.return_value = None
+        return mock_process
 
-    monkeypatch.setattr("src.worker.job_worker.subprocess.run", raise_timeout)
+    monkeypatch.setattr("src.worker.job_worker.subprocess.Popen", mock_popen_timeout)
 
     with pytest.raises(subprocess.TimeoutExpired):
         worker.execute_job(job)
@@ -231,21 +254,35 @@ def test_execute_job_timeout_updates_status(monkeypatch: Any, worker: JobWorker,
     assert "timeout" in status.calls[-1][2]["error"]
 
 
-def test_execute_job_oom_sets_error(monkeypatch: Any, worker: JobWorker, status: DummyStatus, storage: DummyStorage) -> None:
+def test_execute_job_oom_sets_error(monkeypatch: Any, worker: JobWorker, status: DummyStatus, storage: DummyStorage, tmp_path: Path) -> None:
     job = {
         "job_id": "job-oom",
         "submission_id": "sub-1",
         "entrypoint": "main.py",
         "config_file": "config.yaml",
     }
+
+    # Setup logs_root
+    logs_root = tmp_path / "logs"
+    logs_root.mkdir(parents=True, exist_ok=True)
+    storage.logs_root = logs_root
+
     worker.storage = storage
     worker.status = status
     worker.queue = MagicMock()
 
-    def raise_oom(*args: Any, **kwargs: Any) -> MagicMock:
-        raise subprocess.CalledProcessError(returncode=1, cmd=args[0], stderr=b"OutOfMemory")
+    def mock_popen_oom(cmd, **kwargs):
+        # Write OOM error to log file
+        log_file = kwargs.get("stdout")
+        if log_file and hasattr(log_file, "write"):
+            log_file.write("OutOfMemory\n")
+            log_file.flush()
+        mock_process = MagicMock()
+        mock_process.wait.return_value = None
+        mock_process.returncode = 1
+        return mock_process
 
-    monkeypatch.setattr("src.worker.job_worker.subprocess.run", raise_oom)
+    monkeypatch.setattr("src.worker.job_worker.subprocess.Popen", mock_popen_oom)
 
     with pytest.raises(subprocess.CalledProcessError):
         worker.execute_job(job)
@@ -255,7 +292,7 @@ def test_execute_job_oom_sets_error(monkeypatch: Any, worker: JobWorker, status:
 
 
 def test_execute_job_loads_metrics_and_logs_to_mlflow(
-    monkeypatch: Any, worker: JobWorker, status: DummyStatus, storage: DummyStorage, tracking: DummyTracking
+    monkeypatch: Any, worker: JobWorker, status: DummyStatus, storage: DummyStorage, tracking: DummyTracking, tmp_path: Path
 ) -> None:
     job = {
         "job_id": "job-metrics",
@@ -264,15 +301,18 @@ def test_execute_job_loads_metrics_and_logs_to_mlflow(
         "config_file": "config.yaml",
     }
 
+    # Setup logs_root
+    logs_root = tmp_path / "logs"
+    logs_root.mkdir(parents=True, exist_ok=True)
+    storage.logs_root = logs_root
+
     # Create metrics.json
     output_dir = worker.artifacts_root / job["job_id"]
     output_dir.mkdir(parents=True, exist_ok=True)
     metrics_file = output_dir / "metrics.json"
     metrics_file.write_text('{"params": {"method": "padim"}, "metrics": {"auc": 0.95}}')
 
-    result = MagicMock()
-    result.stdout = b""
-    monkeypatch.setattr("src.worker.job_worker.subprocess.run", MagicMock(return_value=result))
+    monkeypatch.setattr("src.worker.job_worker.subprocess.Popen", create_mock_popen())
 
     worker.storage = storage
     worker.status = status
@@ -296,49 +336,9 @@ def test_execute_job_loads_metrics_and_logs_to_mlflow(
 def test_execute_job_saves_training_log(
     monkeypatch: Any, worker: JobWorker, status: DummyStatus, storage: DummyStorage, tracking: DummyTracking, tmp_path: Path
 ) -> None:
-    """Test that training.log is copied to logs directory."""
+    """Test that logs are written directly to logs directory via Popen."""
     job = {
         "job_id": "job-with-log",
-        "submission_id": "sub-1",
-        "entrypoint": "main.py",
-        "config_file": "config.yaml",
-    }
-
-    # Create metrics.json and training.log
-    output_dir = worker.artifacts_root / job["job_id"]
-    output_dir.mkdir(parents=True, exist_ok=True)
-    metrics_file = output_dir / "metrics.json"
-    metrics_file.write_text('{"params": {"method": "padim"}, "metrics": {"auc": 0.95}}')
-    training_log = output_dir / "training.log"
-    training_log.write_text("INFO: Training started\nINFO: Training completed")
-
-    # Setup storage with logs_root
-    logs_root = tmp_path / "logs"
-    logs_root.mkdir(parents=True, exist_ok=True)
-    storage.logs_root = logs_root
-
-    result = MagicMock()
-    result.stdout = b""
-    monkeypatch.setattr("src.worker.job_worker.subprocess.run", MagicMock(return_value=result))
-
-    worker.storage = storage
-    worker.status = status
-    worker.tracking = tracking
-    worker.queue = MagicMock()
-
-    worker.execute_job(job)
-
-    # Verify log was copied
-    log_path = logs_root / f"{job['job_id']}.log"
-    assert log_path.exists()
-    assert log_path.read_text() == "INFO: Training started\nINFO: Training completed"
-
-
-def test_execute_job_mlflow_failure_updates_status(
-    monkeypatch: Any, worker: JobWorker, status: DummyStatus, storage: DummyStorage, tracking: DummyTracking
-) -> None:
-    job = {
-        "job_id": "job-mlflow",
         "submission_id": "sub-1",
         "entrypoint": "main.py",
         "config_file": "config.yaml",
@@ -350,9 +350,61 @@ def test_execute_job_mlflow_failure_updates_status(
     metrics_file = output_dir / "metrics.json"
     metrics_file.write_text('{"params": {"method": "padim"}, "metrics": {"auc": 0.95}}')
 
-    result = MagicMock()
-    result.stdout = b""
-    monkeypatch.setattr("src.worker.job_worker.subprocess.run", MagicMock(return_value=result))
+    # Setup storage with logs_root
+    logs_root = tmp_path / "logs"
+    logs_root.mkdir(parents=True, exist_ok=True)
+    storage.logs_root = logs_root
+
+    def mock_popen_with_output(cmd, stdout=None, **kwargs):
+        # Write test output to the log file
+        if stdout and hasattr(stdout, "write"):
+            stdout.write("INFO: Training started\n")
+            stdout.write("INFO: Training completed\n")
+            stdout.flush()
+        mock_process = MagicMock()
+        mock_process.wait.return_value = None
+        mock_process.returncode = 0
+        return mock_process
+
+    monkeypatch.setattr("src.worker.job_worker.subprocess.Popen", mock_popen_with_output)
+
+    worker.storage = storage
+    worker.status = status
+    worker.tracking = tracking
+    worker.queue = MagicMock()
+
+    worker.execute_job(job)
+
+    # Verify log was written directly
+    log_path = logs_root / f"{job['job_id']}.log"
+    assert log_path.exists()
+    content = log_path.read_text()
+    assert "INFO: Training started" in content
+    assert "INFO: Training completed" in content
+
+
+def test_execute_job_mlflow_failure_updates_status(
+    monkeypatch: Any, worker: JobWorker, status: DummyStatus, storage: DummyStorage, tracking: DummyTracking, tmp_path: Path
+) -> None:
+    job = {
+        "job_id": "job-mlflow",
+        "submission_id": "sub-1",
+        "entrypoint": "main.py",
+        "config_file": "config.yaml",
+    }
+
+    # Setup logs_root
+    logs_root = tmp_path / "logs"
+    logs_root.mkdir(parents=True, exist_ok=True)
+    storage.logs_root = logs_root
+
+    # Create metrics.json
+    output_dir = worker.artifacts_root / job["job_id"]
+    output_dir.mkdir(parents=True, exist_ok=True)
+    metrics_file = output_dir / "metrics.json"
+    metrics_file.write_text('{"params": {"method": "padim"}, "metrics": {"auc": 0.95}}')
+
+    monkeypatch.setattr("src.worker.job_worker.subprocess.Popen", create_mock_popen())
 
     worker.storage = storage
     worker.status = status
@@ -368,7 +420,7 @@ def test_execute_job_mlflow_failure_updates_status(
 
 
 def test_execute_job_fails_when_metrics_json_missing(
-    monkeypatch: Any, worker: JobWorker, status: DummyStatus, storage: DummyStorage
+    monkeypatch: Any, worker: JobWorker, status: DummyStatus, storage: DummyStorage, tmp_path: Path
 ) -> None:
     job = {
         "job_id": "job-no-metrics",
@@ -377,9 +429,12 @@ def test_execute_job_fails_when_metrics_json_missing(
         "config_file": "config.yaml",
     }
 
-    result = MagicMock()
-    result.stdout = b""
-    monkeypatch.setattr("src.worker.job_worker.subprocess.run", MagicMock(return_value=result))
+    # Setup logs_root
+    logs_root = tmp_path / "logs"
+    logs_root.mkdir(parents=True, exist_ok=True)
+    storage.logs_root = logs_root
+
+    monkeypatch.setattr("src.worker.job_worker.subprocess.Popen", create_mock_popen())
 
     worker.storage = storage
     worker.status = status
@@ -393,7 +448,7 @@ def test_execute_job_fails_when_metrics_json_missing(
 
 
 def test_execute_job_fails_when_metrics_json_invalid(
-    monkeypatch: Any, worker: JobWorker, status: DummyStatus, storage: DummyStorage
+    monkeypatch: Any, worker: JobWorker, status: DummyStatus, storage: DummyStorage, tmp_path: Path
 ) -> None:
     job = {
         "job_id": "job-invalid-metrics",
@@ -402,15 +457,18 @@ def test_execute_job_fails_when_metrics_json_invalid(
         "config_file": "config.yaml",
     }
 
+    # Setup logs_root
+    logs_root = tmp_path / "logs"
+    logs_root.mkdir(parents=True, exist_ok=True)
+    storage.logs_root = logs_root
+
     # Create invalid metrics.json (missing 'metrics' field)
     output_dir = worker.artifacts_root / job["job_id"]
     output_dir.mkdir(parents=True, exist_ok=True)
     metrics_file = output_dir / "metrics.json"
     metrics_file.write_text('{"params": {"method": "padim"}}')
 
-    result = MagicMock()
-    result.stdout = b""
-    monkeypatch.setattr("src.worker.job_worker.subprocess.run", MagicMock(return_value=result))
+    monkeypatch.setattr("src.worker.job_worker.subprocess.Popen", create_mock_popen())
 
     worker.storage = storage
     worker.status = status
@@ -421,3 +479,101 @@ def test_execute_job_fails_when_metrics_json_invalid(
 
     assert status.calls[-1][1] == JobStatus.FAILED
     assert "must contain 'params' and 'metrics'" in status.calls[-1][2]["error"]
+
+
+def test_execute_job_creates_log_file_at_start(
+    monkeypatch: Any, worker: JobWorker, status: DummyStatus, storage: DummyStorage, tracking: DummyTracking, tmp_path: Path
+) -> None:
+    """ジョブ開始時にログファイルが作成されることを検証"""
+    job = {
+        "job_id": "job-realtime-log",
+        "submission_id": "sub-1",
+        "entrypoint": "main.py",
+        "config_file": "config.yaml",
+    }
+
+    # Setup logs_root
+    logs_root = tmp_path / "logs"
+    logs_root.mkdir(parents=True, exist_ok=True)
+    storage.logs_root = logs_root
+
+    # Create metrics.json
+    output_dir = worker.artifacts_root / job["job_id"]
+    output_dir.mkdir(parents=True, exist_ok=True)
+    metrics_file = output_dir / "metrics.json"
+    metrics_file.write_text('{"params": {"method": "test"}, "metrics": {"auc": 0.9}}')
+
+    # Mock Popen to simulate subprocess
+    mock_process = MagicMock()
+    mock_process.wait.return_value = None
+    mock_process.returncode = 0
+    mock_popen = MagicMock(return_value=mock_process)
+    monkeypatch.setattr("src.worker.job_worker.subprocess.Popen", mock_popen)
+
+    worker.storage = storage
+    worker.status = status
+    worker.tracking = tracking
+    worker.queue = MagicMock()
+
+    worker.execute_job(job)
+
+    # ログファイルが作成されていることを確認
+    log_path = logs_root / f"{job['job_id']}.log"
+    assert log_path.exists()
+
+
+def test_execute_job_streams_output_to_log_file(
+    monkeypatch: Any, worker: JobWorker, status: DummyStatus, storage: DummyStorage, tracking: DummyTracking, tmp_path: Path
+) -> None:
+    """stdout/stderrがログファイルに直接ストリーミングされることを検証"""
+    job = {
+        "job_id": "job-stream-log",
+        "submission_id": "sub-1",
+        "entrypoint": "main.py",
+        "config_file": "config.yaml",
+    }
+
+    # Setup logs_root
+    logs_root = tmp_path / "logs"
+    logs_root.mkdir(parents=True, exist_ok=True)
+    storage.logs_root = logs_root
+
+    # Create metrics.json
+    output_dir = worker.artifacts_root / job["job_id"]
+    output_dir.mkdir(parents=True, exist_ok=True)
+    metrics_file = output_dir / "metrics.json"
+    metrics_file.write_text('{"params": {"method": "test"}, "metrics": {"auc": 0.9}}')
+
+    # Track what file handle was passed to Popen
+    captured_stdout = None
+
+    def mock_popen_init(cmd, stdout=None, stderr=None, env=None, **kwargs):
+        nonlocal captured_stdout
+        captured_stdout = stdout
+        # Write some test output to the file
+        if stdout and hasattr(stdout, 'write'):
+            stdout.write("Test output line 1\n")
+            stdout.write("Test output line 2\n")
+            stdout.flush()
+        mock_process = MagicMock()
+        mock_process.wait.return_value = None
+        mock_process.returncode = 0
+        return mock_process
+
+    monkeypatch.setattr("src.worker.job_worker.subprocess.Popen", mock_popen_init)
+
+    worker.storage = storage
+    worker.status = status
+    worker.tracking = tracking
+    worker.queue = MagicMock()
+
+    worker.execute_job(job)
+
+    # ファイルハンドルが渡されていることを確認
+    assert captured_stdout is not None
+
+    # ログファイルに内容が書き込まれていることを確認
+    log_path = logs_root / f"{job['job_id']}.log"
+    log_content = log_path.read_text()
+    assert "Test output line 1" in log_content
+    assert "Test output line 2" in log_content
