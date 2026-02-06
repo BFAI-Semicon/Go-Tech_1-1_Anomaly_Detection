@@ -32,10 +32,8 @@ services:
       - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
       - HF_HOME=/tmp/huggingface
       - TORCH_HOME=/tmp/torch
-      - HOME=/home/appuser
       - NVIDIA_VISIBLE_DEVICES=all
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility
-      - LD_PRELOAD=/usr/local/cuda/compat/lib.real/libcuda.so.1
     volumes:
       - ./shared:/shared
 
@@ -47,9 +45,6 @@ services:
     read_only: true
     tmpfs:
       - /tmp
-      - /home/appuser
-      - /home/appuser/.cache
-      - /home/appuser/.nv
     ipc: host
     ulimits:
       memlock: -1
