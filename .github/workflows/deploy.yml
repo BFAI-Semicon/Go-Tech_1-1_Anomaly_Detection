@@ -1,27 +1,21 @@
 name: Deploy
 
 on:
-  push:
-    branches: [ main ]
-    paths:
-      - "LeadersBoard/**"
-      - ".github/workflows/deploy.yml"
+  workflow_run:
+    workflows: ["Build & Push Images"]
+    types: [completed]
   workflow_dispatch:
 
 jobs:
   deploy:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: [self-hosted, Linux, X64, prod]
-    defaults:
-      run:
-        shell: bash
-
     steps:
       - uses: actions/checkout@v4
-
-      - name: Deploy (pull & up)
+      - name: Deploy
+        shell: bash
         run: |
           set -euo pipefail
           cd LeadersBoard
-
           docker compose -f docker-compose.yml -f docker-compose.prod.yml pull
           docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --no-build
