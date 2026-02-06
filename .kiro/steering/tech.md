@@ -96,6 +96,30 @@
   - 境界ケース（ファイルサイズ上限、重複投入）
   - Streamlit UI（提出フォーム、ジョブ一覧、ログ取得、MLflowリンク生成）
 
+## CI/CD Pipeline
+
+### GitHub Actions
+
+**CI (`.github/workflows/ci.yml`)**:
+
+- **Trigger**: push/PR to `main`
+- **Runner**: ubuntu-22.04
+- **Steps**: Python 3.13 setup → `ruff check` → `pytest tests/unit`
+- **Purpose**: 品質ゲート（静的解析 + ユニットテスト）
+
+**CD (`.github/workflows/deploy.yml`)**:
+
+- **Trigger**: push to `main`（`LeadersBoard/**` 変更時）、または手動実行
+- **Runner**: self-hosted (Linux, X64, prod)
+- **Steps**: `docker compose -f docker-compose.yml -f docker-compose.prod.yml pull && up -d`
+- **Purpose**: 本番環境への自動デプロイ（プリビルドイメージ使用）
+
+### Container Registry
+
+- **Registry**: ghcr.io/bfai-semicon/go-tech-1-1-anomaly/
+- **Images**: `api:main`, `worker:main`, `streamlit:main`
+- **Usage**: `docker-compose.prod.yml` でイメージ参照
+
 ## Development Environment
 
 ### Required Tools
@@ -200,7 +224,7 @@ docker-compose -f docker-compose.yml up --build
 - `RedisJobStatusAdapter` は `leaderboard:job:<job_id>` ハッシュを使ってステータスとメタ情報を保持し、TTL を 90 日間維持する。
 - `count_running` は `SCAN` で running 状態を持つエントリを集計し、`EnqueueJob` の同時実行制限へ渡す。
 - `JobWorker` は entrypoint と設定ファイルを `python` に渡し、artifact ルートへ成果物を出力する。
-- 実行は `subprocess.run(..., timeout=...)` で行う。
+- **リアルタイムログストリーミング**: `subprocess.Popen()` でサブプロセスを起動し、stdout/stderrをログファイルに直接ストリーミング。`PYTHONUNBUFFERED=1` でPythonのバッファリングを無効化し、ログのリアルタイム出力を実現。
 - `resource_class`（small/medium）が指定されていれば `RESOURCE_TIMEOUTS` からタイムアウトを選ぶ。
 - **投稿者のコードは `metrics.json` を出力し、MLflowに依存しない**。
 - Worker が `metrics.json` を読み取り、`TrackingPort` 経由で MLflow に記録する。
@@ -220,9 +244,11 @@ docker-compose -f docker-compose.yml up --build
 
 1. **提出フォーム**: ファイルアップロード、エントリポイント/設定ファイル指定、メタデータJSON入力
 2. **ジョブ一覧**: Job ID、Submission ID、ステータス表示（色分け対応）
-3. **自動更新**: `@st.fragment(run_every="5s")` による5秒ごとの自動更新（実行中ジョブがある場合のみメッセージ表示）
+3. **自動更新**: `@st.fragment(run_every="5s")` による5秒ごとの自動更新（実行中ジョブがある場合のみAPIリクエスト）
 4. **MLflow連携**: `run_id`からMLflow UI runリンクを自動生成・表示
-5. **ログ表示**: `GET /jobs/{job_id}/logs`経由でワーカーログを表示
+5. **リアルタイムログ表示**: 実行中ジョブのログを展開状態で表示、完了ジョブは折りたたみ表示
+6. **手動更新**: 🔄ボタンで任意タイミングのログ再取得
+7. **パフォーマンス最適化**: 実行中ジョブは最新100行のみ取得（tail処理）
 
 ### Integration Pattern
 
@@ -277,5 +303,5 @@ render_jobs_with_auto_refresh = st.fragment(run_every="5s")(_render_jobs)
 
 ## Maintenance
 
-- updated_at: 2026-02-04
-- reason: パフォーマンスメトリクスログ記録機能の追加（training_time_seconds, peak_gpu_memory_mb等のsystem/プレフィックス付き記録）
+- updated_at: 2026-02-06
+- reason: streamlit-realtime-worker-logs機能（リアルタイムログストリーミング、tail処理、UI改善）を反映

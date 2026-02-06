@@ -86,8 +86,15 @@ API 側で Redis カウンター（`leaderboard:rate:{user_id}`）を参照し�
 **Auto-refresh Pattern**:
 
 - `@st.fragment(run_every="5s")` で `_render_jobs()` を装飾（main関数内で動的適用）
-- 実行中（pending/running）ジョブがある場合のみ自動更新メッセージを表示
+- 実行中（pending/running）ジョブがある場合のみAPIリクエストを実行（パフォーマンス最適化）
 - 提出フォームの入力状態は保持される（Fragmentスコープ分離）
+
+**Real-time Log Display Pattern**:
+
+- `_render_job_logs()` でジョブのログを表示
+- 実行中ジョブ: 展開状態（`expanded=True`）で最新100行を表示
+- 完了/失敗ジョブ: 折りたたみ状態（`expanded=False`）で全ログを表示
+- 手動更新ボタン（🔄）で任意タイミングのログ再取得
 
 #### エントリポイントのライフサイクル（パターン）
 
@@ -102,7 +109,7 @@ API 側で Redis カウンター（`leaderboard:rate:{user_id}`）を参照し�
 - `_build_command` は entrypoint と設定ファイルを `python` に渡し、`--output` で artifact_path を指定する。
 - **投稿者のコードは `{output}/metrics.json` に結果を出力し、MLflowに依存しない**。
 - `resource_class`（small=30分、medium=60分）に応じて `RESOURCE_TIMEOUTS` からタイムアウトを選ぶ。
-- 実行は `subprocess.run(..., timeout=...)` で投稿者のコードを実行。
+- **リアルタイムログ出力**: `subprocess.Popen()` でサブプロセスを起動し、stdout/stderrをログファイルに直接ストリーミング。`PYTHONUNBUFFERED=1` でバッファリングを無効化。
 - `_load_metrics()` で `metrics.json` を読み取り、パラメータとメトリクスを取得。
 - `TrackingPort.start_run()` → `log_params()` → `log_metrics()` → `end_run()` で MLflow に記録。
 - `run_id` を取得して `JobStatus.COMPLETED` を更新する。
@@ -126,7 +133,7 @@ API 側で Redis カウンター（`leaderboard:rate:{user_id}`）を参照し�
 - そのファイルは `files` リストと `user_id`/`entrypoint`/`config_file` などのメタ情報を保持する。
 - `UPLOAD_ROOT`/`LOG_ROOT` は起動時に自動作成される。
 - `validate_entrypoint` は `/` や `..` を含むパスを拒否し、`.py` で終わるファイルだけを許可してパスの安全性を確保する。
-- `load_logs(job_id)` は `<LOG_ROOT>/<job_id>.log` を返し、API エンドポイントや CI からジョブログを取り出せるよう整備する。
+- `load_logs(job_id, tail_lines=N)` は `<LOG_ROOT>/<job_id>.log` を返す。`tail_lines` パラメータで最終N行のみを取得可能（大規模ログのメモリ効率化）。`deque` を使用した効率的なtail処理。
 
 ### ドキュメント構成
 
@@ -154,14 +161,24 @@ API 側で Redis カウンター（`leaderboard:rate:{user_id}`）を参照し�
 - `demo_anomalib/`: Anomalib Padim モデルのデモ（config.yaml + main.py）
 - `demo_anomalib2/`: パフォーマンスメトリクス対応の Anomalib Padim デモ（GPUメモリ使用量・学習/推論時間をログ記録）
 
+### CI/CD構成
+
+**Location**: `.github/workflows/`  
+**Purpose**: GitHub Actionsによる継続的インテグレーション・デプロイメント  
+**Pattern**:
+
+- `ci.yml`: CIパイプライン（ruff + ユニットテスト、ubuntu-22.04）
+- `deploy.yml`: CDパイプライン（self-hosted runner、プリビルドイメージ使用）
+
 ### Docker構成
 
 **Location**: `LeadersBoard/` + `.devcontainer/`  
-**Purpose**: docker-compose構成（本番 + 開発オーバーライド）  
+**Purpose**: docker-compose構成（ベース + 環境別オーバーレイ）  
 **Example**:
 
-- `LeadersBoard/docker-compose.yml`: 本番用構成ファイル（api, worker, redis, mlflow, streamlit）
-- `.devcontainer/docker-compose.override.yml`: 開発用オーバーライド（apiのtargetをdevに変更、ソースマウント）
+- `LeadersBoard/docker-compose.yml`: ベース構成（api, worker, redis, mlflow, streamlit）
+- `LeadersBoard/docker-compose.prod.yml`: 本番オーバーレイ（ghcr.ioからのプリビルドイメージ参照）
+- `.devcontainer/docker-compose.override.yml`: 開発用オーバーレイ（apiのtargetをdevに変更、ソースマウント）
 - `docker/api.Dockerfile`: API用Dockerfile（マルチステージ: dev/prod）
 - `docker/worker.Dockerfile`: Worker用Dockerfile（GPU対応）
 - `docker/streamlit.Dockerfile`: Streamlit UI用Dockerfile（Python 3.13-slim、streamlit + requests）
@@ -171,7 +188,15 @@ API 側で Redis カウンター（`leaderboard:rate:{user_id}`）を参照し�
 
 - `api.Dockerfile`は`dev`と`prod`の2ステージを持つ
 - 開発時: `.devcontainer/docker-compose.override.yml`で`target: dev`を指定、`sleep infinity`で手動起動
-- 本番時: `docker-compose.yml`のみ使用（`target: prod`がデフォルト）
+- 本番時: `docker-compose.yml` + `docker-compose.prod.yml` でプリビルドイメージを使用
+
+**本番デプロイパターン**:
+
+```bash
+# 本番環境（プリビルドイメージ使用）
+docker compose -f docker-compose.yml -f docker-compose.prod.yml pull
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --no-build
+```
 
 **devcontainer.json設定**:
 
@@ -250,5 +275,5 @@ from src.adapters.filesystem_storage_adapter import FileSystemStorageAdapter
 
 ## Maintenance
 
-- updated_at: 2026-02-04
-- reason: demo_anomalib2/ ディレクトリの追加（パフォーマンスメトリクス対応のAnomalib Padimデモ）
+- updated_at: 2026-02-06
+- reason: streamlit-realtime-worker-logs機能（Popen実行、tail処理、リアルタイムログ表示パターン）を反映
