@@ -10,12 +10,32 @@ jobs:
   deploy:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: [self-hosted, Linux, X64, prod]
+    defaults:
+      run:
+        shell: bash
+
     steps:
       - uses: actions/checkout@v4
-      - name: Deploy
-        shell: bash
+
+      - name: Prepare .env for compose
+        run: |
+          set -euo pipefail
+          test -f /etc/leadersboard/prod.env
+          mkdir -p LeadersBoard
+          cp /etc/leadersboard/prod.env LeadersBoard/.env
+          chmod 600 LeadersBoard/.env
+
+      - name: Deploy (pull & up)
         run: |
           set -euo pipefail
           cd LeadersBoard
+          ls -la
           docker compose -f docker-compose.yml -f docker-compose.prod.yml pull
           docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --no-build
+
+      - name: Show status
+        if: always()
+        run: |
+          set -euo pipefail
+          cd LeadersBoard
+          docker compose -f docker-compose.yml -f docker-compose.prod.yml ps
