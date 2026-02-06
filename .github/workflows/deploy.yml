@@ -1,17 +1,27 @@
+name: Deploy
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - "LeadersBoard/**"
+      - ".github/workflows/deploy.yml"
+  workflow_dispatch:
+
 jobs:
   deploy:
     runs-on: [self-hosted, Linux, X64, prod]
+    defaults:
+      run:
+        shell: bash
+
     steps:
       - uses: actions/checkout@v4
 
       - name: Deploy (pull & up)
-        shell: bash
         run: |
           set -euo pipefail
-          docker compose \
-            --env-file /etc/leadersboard/prod.env \
-            -f docker-compose.yml -f docker-compose.prod.yml pull
+          cd LeadersBoard
 
-          docker compose \
-            --env-file /etc/leadersboard/prod.env \
-            -f docker-compose.yml -f docker-compose.prod.yml up -d --no-build
+          docker compose -f docker-compose.yml -f docker-compose.prod.yml pull
+          docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --no-build
