@@ -36,6 +36,9 @@ services:
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility
       - HOME=/tmp
       - XDG_CACHE_HOME=/tmp/.cache
+      # Prevent getpass.getuser() from failing when UID doesn't exist in /etc/passwd
+      - USER=appuser
+      - LOGNAME=appuser
     volumes:
       - ./shared:/shared
 
