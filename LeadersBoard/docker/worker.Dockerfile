@@ -32,11 +32,12 @@ ARG APP_GID=1000
 COPY src/ ./src/
 
 # Run as non-root user with configurable UID/GID
-RUN groupadd --gid ${APP_GID} appgroup && \
-    useradd --create-home --shell /bin/bash --uid ${APP_UID} --gid ${APP_GID} appuser && \
+# Use existing group/user if GID/UID already exists in base image
+RUN (getent group ${APP_GID} || groupadd --gid ${APP_GID} appgroup) && \
+    (getent passwd ${APP_UID} || useradd --create-home --shell /bin/bash --uid ${APP_UID} --gid ${APP_GID} appuser) && \
     mkdir -p /tmp/mplconfig && \
     chmod 777 /tmp/mplconfig
-USER appuser
+USER ${APP_UID}
 
 # Start worker
 CMD ["python", "-m", "src.worker.main"]
