@@ -145,12 +145,16 @@ def _post_submission(
     return response.json().get("submission_id"), response.status_code
 
 
-def _create_submission_entry(context, script: str, entrypoint: str = "main.py", config_file: str = "config.yaml") -> str:
+def _create_submission_entry(
+    context, script: str, entrypoint: str = "main.py", config_file: str = "config.yaml"
+) -> str:
     files = [
         _buffer_from_text(script, entrypoint),
         _buffer_from_text("batch_size: 1", config_file),
     ]
-    return context.create_submission.execute("integration-user", files, entrypoint=entrypoint, config_file=config_file)
+    return context.create_submission.execute(
+        "integration-user", files, entrypoint=entrypoint, config_file=config_file
+    )
 
 
 def test_end_to_end_flow(integration_context) -> None:
@@ -233,7 +237,10 @@ def test_submission_rejects_path_traversal_entrypoint(integration_context) -> No
                 ),
             ),
         ],
-        data={"entrypoint": "../etc/passwd", "metadata": json.dumps({"entrypoint": "../etc/passwd", "config_file": "config.yaml"})},
+        data={
+            "entrypoint": "../etc/passwd",
+            "metadata": json.dumps({"entrypoint": "../etc/passwd", "config_file": "config.yaml"}),
+        },
     )
     assert response.status_code == 400
 
@@ -261,14 +268,19 @@ def test_submission_rejects_non_py_entrypoint(integration_context) -> None:
                 ),
             ),
         ],
-        data={"entrypoint": "main.txt", "metadata": json.dumps({"entrypoint": "main.txt", "config_file": "config.yaml"})},
+        data={
+            "entrypoint": "main.txt",
+            "metadata": json.dumps({"entrypoint": "main.txt", "config_file": "config.yaml"}),
+        },
     )
     assert response.status_code == 400
 
 
 def test_worker_records_timeout(integration_context) -> None:
     submission_id = _create_submission_entry(integration_context, _sleep_script())
-    job_id = integration_context.enqueue_job.execute(submission_id, "integration-user", {"mode": "timeout"})
+    job_id = integration_context.enqueue_job.execute(
+        submission_id, "integration-user", {"mode": "timeout"}
+    )
     job_payload = integration_context.queue_adapter.dequeue(timeout=1)
     assert job_payload
     job_payload["resource_class"] = "tiny"
@@ -284,7 +296,9 @@ def test_worker_records_timeout(integration_context) -> None:
 
 def test_worker_reports_oom_failure(integration_context) -> None:
     submission_id = _create_submission_entry(integration_context, _oom_script())
-    job_id = integration_context.enqueue_job.execute(submission_id, "integration-user", {"mode": "oom"})
+    job_id = integration_context.enqueue_job.execute(
+        submission_id, "integration-user", {"mode": "oom"}
+    )
     job_payload = integration_context.queue_adapter.dequeue(timeout=1)
     assert job_payload
 
@@ -298,7 +312,9 @@ def test_worker_reports_oom_failure(integration_context) -> None:
 
 def test_worker_reports_mlflow_connection_failure(integration_context) -> None:
     submission_id = _create_submission_entry(integration_context, _mlflow_error_script())
-    job_id = integration_context.enqueue_job.execute(submission_id, "integration-user", {"mode": "mlflow"})
+    job_id = integration_context.enqueue_job.execute(
+        submission_id, "integration-user", {"mode": "mlflow"}
+    )
     job_payload = integration_context.queue_adapter.dequeue(timeout=1)
     assert job_payload
 
@@ -357,7 +373,9 @@ def _invalid_metrics_script() -> str:
 def test_worker_fails_when_metrics_json_missing(integration_context) -> None:
     """Test that Worker fails gracefully when metrics.json is not output."""
     submission_id = _create_submission_entry(integration_context, _no_metrics_script())
-    job_id = integration_context.enqueue_job.execute(submission_id, "integration-user", {"mode": "no-metrics"})
+    job_id = integration_context.enqueue_job.execute(
+        submission_id, "integration-user", {"mode": "no-metrics"}
+    )
     job_payload = integration_context.queue_adapter.dequeue(timeout=1)
     assert job_payload
 
@@ -372,7 +390,9 @@ def test_worker_fails_when_metrics_json_missing(integration_context) -> None:
 def test_worker_fails_when_metrics_json_invalid(integration_context) -> None:
     """Test that Worker fails gracefully when metrics.json has invalid format."""
     submission_id = _create_submission_entry(integration_context, _invalid_metrics_script())
-    job_id = integration_context.enqueue_job.execute(submission_id, "integration-user", {"mode": "invalid-metrics"})
+    job_id = integration_context.enqueue_job.execute(
+        submission_id, "integration-user", {"mode": "invalid-metrics"}
+    )
     job_payload = integration_context.queue_adapter.dequeue(timeout=1)
     assert job_payload
 

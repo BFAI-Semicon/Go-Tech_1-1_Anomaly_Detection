@@ -35,12 +35,16 @@ def submit_submission(
         "config_file": config_file,
         "metadata": json.dumps(metadata or {}),
     }
-    response = requests.post(url, headers=headers, files=[("files", f) for f in files], data=data, timeout=30)
+    response = requests.post(
+        url, headers=headers, files=[("files", f) for f in files], data=data, timeout=30
+    )
     response.raise_for_status()
     return response.json()
 
 
-def create_job(api_url: str, token: str, submission_id: str, config: dict[str, Any]) -> dict[str, Any]:
+def create_job(
+    api_url: str, token: str, submission_id: str, config: dict[str, Any]
+) -> dict[str, Any]:
     """POST /jobs を呼び出して job_id を取得する。"""
     url = api_url.rstrip("/") + "/jobs"
     headers = {"Authorization": f"Bearer {token}"}
@@ -61,9 +65,7 @@ def fetch_job_status(api_url: str, token: str, job_id: str) -> dict[str, Any] | 
     return response.json()
 
 
-def fetch_job_logs(
-    api_url: str, token: str, job_id: str, tail_lines: int | None = None
-) -> str:
+def fetch_job_logs(api_url: str, token: str, job_id: str, tail_lines: int | None = None) -> str:
     """GET /jobs/{job_id}/logs を取得する。
 
     Args:
@@ -117,7 +119,9 @@ def _render_submission_form(api_url: str, mlflow_url: str) -> None:
 
     st.header("Submission")
     token = st.text_input("API Token", type="password", key="token_input")
-    uploaded_files = st.file_uploader("Upload files (main.py, config.yaml, etc.)", accept_multiple_files=True)
+    uploaded_files = st.file_uploader(
+        "Upload files (main.py, config.yaml, etc.)", accept_multiple_files=True
+    )
     entrypoint = st.text_input("Entrypoint", value="main.py")
     config_file = st.text_input("Config file", value="config.yaml")
     metadata_text = st.text_area("metadata (JSON)", value='{"method":"padim"}')
@@ -226,9 +230,7 @@ def _render_jobs(api_url: str, mlflow_url: str) -> None:
         return
 
     # 実行中ジョブの検出用（最初にセッションステートから判定）
-    has_pending_or_running = any(
-        job.get("status") in ("pending", "running") for job in jobs
-    )
+    has_pending_or_running = any(job.get("status") in ("pending", "running") for job in jobs)
 
     # 実行中ジョブがない場合は、APIリクエストをスキップしてキャッシュデータのみ使用
     fetch_status = has_pending_or_running

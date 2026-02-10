@@ -158,7 +158,7 @@ def run_training(config: DictConfig, output_dir: Path) -> None:
         for key, value in test_results[0].items():
             if isinstance(value, (int, float)):
                 metrics[key] = float(value)
-            elif hasattr(value, 'item'):
+            elif hasattr(value, "item"):
                 try:
                     metrics[key] = float(value.item())
                 except (ValueError, TypeError):
@@ -207,10 +207,7 @@ def main() -> None:
     logging.basicConfig(
         level=logging.INFO,
         format="%(levelname)s: %(message)s",
-        handlers=[
-            logging.FileHandler(log_file),
-            logging.StreamHandler()
-        ]
+        handlers=[logging.FileHandler(log_file), logging.StreamHandler()],
     )
 
     config = OmegaConf.load(args.config)

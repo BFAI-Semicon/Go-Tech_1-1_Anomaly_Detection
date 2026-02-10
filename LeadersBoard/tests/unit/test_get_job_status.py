@@ -29,6 +29,7 @@ def test_get_job_status_returns_status_dict() -> None:
 
     assert use_case.execute("job-1") == {"prog": "ok"}
 
+
 def test_get_job_status_handles_missing_job() -> None:
     dummy = DummyStatus({})
     use_case = GetJobStatus(dummy)

@@ -16,11 +16,7 @@ def _load_upstream():
     shim_module = sys.modules.get(__name__)
     try:
         # Remove shim paths so import resolves to upstream anomalib in site-packages.
-        sys.path = [
-            p
-            for p in original_sys_path
-            if Path(p).resolve() not in {shim_dir, shim_root}
-        ]
+        sys.path = [p for p in original_sys_path if Path(p).resolve() not in {shim_dir, shim_root}]
         # Temporarily remove this shim from sys.modules to avoid returning self.
         sys.modules.pop(__name__, None)
         upstream = importlib.import_module("anomalib")

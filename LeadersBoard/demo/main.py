@@ -1,4 +1,5 @@
 """Sample submission for manual testing."""
+
 import argparse
 import json
 from pathlib import Path
@@ -35,7 +36,7 @@ def main():
             "pixel_auc": 0.972,
             "image_f1": 0.934,
             "pixel_f1": 0.887,
-        }
+        },
     }
 
     with open(metrics_path, "w") as f:

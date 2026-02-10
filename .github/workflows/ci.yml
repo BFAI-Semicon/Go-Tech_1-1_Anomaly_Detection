@@ -29,6 +29,7 @@ jobs:
         run: |
           cd LeadersBoard
           ruff check .
+          ruff format --check .
 
       - name: Run unit tests
         run: |

@@ -68,9 +68,9 @@
 
 ### Code Quality
 
-- **Linter**: `ruff` または `flake8` + `black`
-- **Formatter**: `black`
-- **Import Order**: `isort`
+- **Linter**: `ruff`
+- **Formatter**: `ruff format`
+- **Import Order**: `ruff`（`I`ルール）
 
 ### Process Lifecycle（Worker）
 
@@ -190,8 +190,8 @@ docker-compose -f docker-compose.yml up --build
 # Dev: docker-compose up -d
 # Build: docker-compose build
 # Test: pytest tests/ --cov
-# Lint: ruff check . && black --check .
-# Format: black . && isort .
+# Lint: ruff check . && ruff format --check .
+# Format: ruff format .
 ```
 
 ## Key Technical Decisions

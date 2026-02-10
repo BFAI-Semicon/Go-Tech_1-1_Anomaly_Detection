@@ -42,6 +42,7 @@ def test_update_overwrites_status_and_additional_fields() -> None:
     assert stored["error_message"] == "timeout"
     assert "updated_at" in stored
 
+
 def test_get_status_returns_none_for_missing_job() -> None:
     redis_client = fakeredis.FakeRedis()
     adapter = RedisJobStatusAdapter(redis_client)
