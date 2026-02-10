@@ -36,15 +36,6 @@ jobs:
             -t ghcr.io/bfai-semicon/go-tech-1-1-anomaly/api:${{ github.sha }} \
             --push LeadersBoard
 
-      - name: Build & push worker
-        run: |
-          docker buildx build \
-          --progress=plain \
-          -f LeadersBoard/docker/worker.Dockerfile \
-            -t ghcr.io/bfai-semicon/go-tech-1-1-anomaly/worker:main \
-            -t ghcr.io/bfai-semicon/go-tech-1-1-anomaly/worker:${{ github.sha }} \
-            --push LeadersBoard
-
       - name: Build & push streamlit
         run: |
           docker buildx build \

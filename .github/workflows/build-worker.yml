@@ -1,0 +1,72 @@
+name: Build & Push Worker
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "LeadersBoard/**"
+      - ".github/workflows/build-worker.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: build-worker-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-worker:
+    runs-on: [self-hosted, Linux, X64, prod]
+    permissions:
+      contents: read
+      packages: write
+    defaults:
+      run:
+        shell: bash
+    env:
+      BUILDKIT_PROGRESS: plain
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Precheck disk
+        run: |
+          set -euo pipefail
+          echo "== df -h =="
+          df -h
+          echo "== docker system df =="
+          docker system df || true
+
+      - name: Cleanup docker (before build)
+        run: |
+          set -euo pipefail
+          docker system prune -af || true
+          docker builder prune -af || true
+          echo "== docker system df (after cleanup) =="
+          docker system df || true
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push worker
+        run: |
+          set -euo pipefail
+          docker buildx build \
+            --progress=plain \
+            -f LeadersBoard/docker/worker.Dockerfile \
+            -t ghcr.io/bfai-semicon/go-tech-1-1-anomaly/worker:main \
+            -t ghcr.io/bfai-semicon/go-tech-1-1-anomaly/worker:${{ github.sha }} \
+            --push LeadersBoard
+
+      - name: Cleanup docker (after build)
+        if: always()
+        run: |
+          set -euo pipefail
+          docker builder prune -af || true
+          docker image prune -af || true
+          echo "== docker system df (after) =="
+          docker system df || true

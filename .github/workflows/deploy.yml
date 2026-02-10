@@ -2,7 +2,7 @@ name: Deploy
 
 on:
   workflow_run:
-    workflows: ["Build & Push Images"]
+    workflows: ["Build & Push Images", "Build & Push Worker"]
     types: [completed]
   workflow_dispatch:
 
