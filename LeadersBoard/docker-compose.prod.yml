@@ -1,9 +1,12 @@
 services:
   api:
     image: ghcr.io/bfai-semicon/go-tech-1-1-anomaly/api:main
+    user: "${APP_UID}:${APP_GID}"
 
   worker:
     image: ghcr.io/bfai-semicon/go-tech-1-1-anomaly/worker:main
+    user: "${APP_UID}:${APP_GID}"
 
   streamlit:
     image: ghcr.io/bfai-semicon/go-tech-1-1-anomaly/streamlit:main
+    user: "${APP_UID}:${APP_GID}"

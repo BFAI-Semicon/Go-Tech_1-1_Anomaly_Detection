@@ -6,6 +6,7 @@ AnoDDPM
 anomalib
 appendfsync
 appendonly
+appgroup
 appuser
 asyncio
 AUPR

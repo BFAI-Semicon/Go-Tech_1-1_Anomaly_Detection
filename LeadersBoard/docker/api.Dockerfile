@@ -60,11 +60,16 @@ USER vscode
 # =============================================================================
 FROM base AS prod
 
+# Build arguments for user ID/GID (for mounted volume permissions)
+ARG APP_UID=1000
+ARG APP_GID=1000
+
 # Copy application code
 COPY src/ ./src/
 
-# Run as non-root user
-RUN useradd --create-home --shell /bin/bash appuser
+# Run as non-root user with configurable UID/GID
+RUN groupadd --gid ${APP_GID} appgroup && \
+    useradd --create-home --shell /bin/bash --uid ${APP_UID} --gid ${APP_GID} appuser
 USER appuser
 
 # Expose API port
