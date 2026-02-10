@@ -12,12 +12,23 @@
       "type": "shell",
       "command": "cd LeadersBoard && ruff check --fix .",
       "problemMatcher": []
-    }
-    ,
+    },
     {
       "label": "Unit Tests",
       "type": "shell",
       "command": "cd LeadersBoard && pytest tests/unit --maxfail=1",
+      "problemMatcher": []
+    },
+    {
+      "label": "Markdown Check",
+      "type": "shell",
+      "command": "pymarkdown scan .",
+      "problemMatcher": []
+    },
+    {
+      "label": "Markdown Fix",
+      "type": "shell",
+      "command": "pymarkdown fix .",
       "problemMatcher": []
     }
   ]
