@@ -3,6 +3,7 @@ addopts
 aiofiles
 alisson
 AnoDDPM
+Anom
 anomalib
 appendfsync
 appendonly
@@ -163,6 +164,7 @@ RIAD
 SAA+
 Schlosser
 scikit
+segmentations
 semicon
 setuptools
 Shodan
