@@ -65,7 +65,7 @@ services:
     restart: unless-stopped
 
   mlflow:
-    image: ghcr.io/mlflow/mlflow:3.9.0
+    image: ghcr.io/mlflow/mlflow:latest
     user: "${APP_UID:-1000}:${APP_GID:-1000}"
     ports:
       - "5010:5010"
