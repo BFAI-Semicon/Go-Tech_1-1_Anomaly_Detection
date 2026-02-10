@@ -13,10 +13,12 @@ AUPRC
 AUROC
 autouse
 Barusco
+bfai
 BGSAVE
 Borsatti
 BRPOP
 BTAD
+buildx
 Byungseok
 CFA
 CFA+
@@ -144,6 +146,7 @@ RIAD
 SAA+
 Schlosser
 scikit
+semicon
 setuptools
 SimpleNet
 SPADE

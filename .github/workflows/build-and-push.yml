@@ -39,7 +39,8 @@ jobs:
       - name: Build & push worker
         run: |
           docker buildx build \
-            -f LeadersBoard/docker/worker.Dockerfile \
+          --progress=plain \
+          -f LeadersBoard/docker/worker.Dockerfile \
             -t ghcr.io/bfai-semicon/go-tech-1-1-anomaly/worker:main \
             -t ghcr.io/bfai-semicon/go-tech-1-1-anomaly/worker:${{ github.sha }} \
             --push LeadersBoard
