@@ -60,6 +60,7 @@ fastapi
 FastFlow
 Francesco
 GANomaly
+getent
 getenv
 gfortran
 Gian
@@ -81,6 +82,7 @@ isort
 kiro
 kornia
 kwargs
+leadersboard
 levelname
 Lflow
 libamd
@@ -123,6 +125,7 @@ PatchCore
 pathlib
 Peeples
 Pezze
+pipefail
 plotly
 PRO
 PromptAD

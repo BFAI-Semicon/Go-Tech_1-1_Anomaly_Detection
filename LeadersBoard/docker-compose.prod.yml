@@ -2,10 +2,19 @@ services:
   api:
     image: ghcr.io/bfai-semicon/go-tech-1-1-anomaly/api:main
     user: "${APP_UID}:${APP_GID}"
+    volumes:
+      - ${SHARED_DATA_DIR:-./shared}:/shared
 
   worker:
     image: ghcr.io/bfai-semicon/go-tech-1-1-anomaly/worker:main
     user: "${APP_UID}:${APP_GID}"
+    volumes:
+      - ${SHARED_DATA_DIR:-./shared}:/shared
+
+  mlflow:
+    user: "${APP_UID}:${APP_GID}"
+    volumes:
+      - ${SHARED_DATA_DIR:-./shared}:/shared
 
   streamlit:
     image: ghcr.io/bfai-semicon/go-tech-1-1-anomaly/streamlit:main

@@ -6,9 +6,13 @@ on:
     types: [completed]
   workflow_dispatch:
 
+# Persistent data directory (outside $GITHUB_WORKSPACE)
+env:
+  SHARED_DATA_DIR: /var/lib/leadersboard/shared
+
 jobs:
   deploy:
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
     runs-on: [self-hosted, Linux, X64, prod]
     defaults:
       run:
@@ -17,12 +21,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Ensure shared data directory exists
+        run: |
+          set -euo pipefail
+          sudo mkdir -p "${SHARED_DATA_DIR}"
+          # Set ownership to match APP_UID/APP_GID from prod.env
+          source /etc/leadersboard/prod.env
+          sudo chown -R "${APP_UID}:${APP_GID}" "${SHARED_DATA_DIR}"
+
       - name: Prepare .env for compose
         run: |
           set -euo pipefail
           test -f /etc/leadersboard/prod.env
           mkdir -p LeadersBoard
           cp /etc/leadersboard/prod.env LeadersBoard/.env
+          # Add SHARED_DATA_DIR to .env for docker-compose
+          echo "SHARED_DATA_DIR=${SHARED_DATA_DIR}" >> LeadersBoard/.env
           chmod 600 LeadersBoard/.env
 
       - name: Deploy (pull & up)
