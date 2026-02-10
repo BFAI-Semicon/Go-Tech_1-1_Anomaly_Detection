@@ -24,7 +24,11 @@ class JobWorker:
     """Job queue consumer that executes submitted jobs."""
 
     DEFAULT_ARTIFACT_ROOT = Path(os.getenv("ARTIFACT_ROOT", "/shared/artifacts"))
-    RESOURCE_TIMEOUTS: dict[str, float | None] = {"small": 30 * 60, "medium": 60 * 60, "unlimited": None}
+    RESOURCE_TIMEOUTS: dict[str, float | None] = {
+        "small": 30 * 60,
+        "medium": 60 * 60,
+        "unlimited": None,
+    }
     DEFAULT_TIMEOUT = RESOURCE_TIMEOUTS["small"]
 
     def __init__(
@@ -98,7 +102,9 @@ class JobWorker:
             self._validate_path(config_file)
 
             command = self._build_command(submission_dir, entrypoint, config_file, job_id)
-            timeout_seconds = self._timeout_for_resource(job.get("config", {}).get("resource_class"))
+            timeout_seconds = self._timeout_for_resource(
+                job.get("config", {}).get("resource_class")
+            )
 
             logger.info(f"Config file: {submission_dir / config_file}")
             logger.info(f"Output directory: {output_dir}")
@@ -217,7 +223,9 @@ class JobWorker:
 
             # Log performance metrics as system metrics
             if "performance" in metrics_data:
-                performance_metrics = {f"system/{k}": v for k, v in metrics_data["performance"].items()}
+                performance_metrics = {
+                    f"system/{k}": v for k, v in metrics_data["performance"].items()
+                }
                 self.tracking.log_metrics(performance_metrics)
 
             self.tracking.log_artifact(str(output_dir))
@@ -247,7 +255,7 @@ class JobWorker:
             return
 
         # Get logs_root from storage adapter
-        if hasattr(self.storage, 'logs_root'):
+        if hasattr(self.storage, "logs_root"):
             logs_root = self.storage.logs_root
             log_path = logs_root / f"{job_id}.log"
             log_path.write_text(training_log.read_text())

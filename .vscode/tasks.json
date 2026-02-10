@@ -4,13 +4,13 @@
     {
       "label": "Ruff Check",
       "type": "shell",
-      "command": "cd LeadersBoard && ruff check .",
+      "command": "cd LeadersBoard && ruff check . && ruff format --check .",
       "problemMatcher": []
     },
     {
       "label": "Ruff Fix",
       "type": "shell",
-      "command": "cd LeadersBoard && ruff check --fix .",
+      "command": "cd LeadersBoard && ruff check --fix . && ruff format .",
       "problemMatcher": []
     },
     {

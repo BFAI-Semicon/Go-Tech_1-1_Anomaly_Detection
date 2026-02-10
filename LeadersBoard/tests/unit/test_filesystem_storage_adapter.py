@@ -132,5 +132,6 @@ def test_load_logs_raises_file_not_found_when_missing(tmp_path: Path) -> None:
     adapter = FileSystemStorageAdapter(root, logs_root=logs_root)
 
     import pytest
+
     with pytest.raises(FileNotFoundError):
         adapter.load_logs("nonexistent-job")

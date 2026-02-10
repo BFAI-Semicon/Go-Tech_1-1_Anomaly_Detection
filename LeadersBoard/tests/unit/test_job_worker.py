@@ -68,7 +68,14 @@ class DummyQueue(JobQueuePort):
     def __init__(self, jobs: list[dict[str, Any]]) -> None:
         self.jobs = jobs
 
-    def enqueue(self, job_id: str, submission_id: str, entrypoint: str, config_file: str, config: dict[str, Any]) -> None:  # noqa: ARG002
+    def enqueue(
+        self,
+        job_id: str,
+        submission_id: str,
+        entrypoint: str,
+        config_file: str,
+        config: dict[str, Any],
+    ) -> None:  # noqa: ARG002
         raise NotImplementedError
 
     def dequeue(self, timeout: int = 0) -> dict[str, Any] | None:
@@ -132,7 +139,14 @@ def worker(storage: DummyStorage, status: DummyStatus, tracking: DummyTracking) 
     )
 
 
-def test_execute_job_runs_command(monkeypatch: Any, worker: JobWorker, status: DummyStatus, storage: DummyStorage, tracking: DummyTracking, tmp_path: Path) -> None:
+def test_execute_job_runs_command(
+    monkeypatch: Any,
+    worker: JobWorker,
+    status: DummyStatus,
+    storage: DummyStorage,
+    tracking: DummyTracking,
+    tmp_path: Path,
+) -> None:
     job = {
         "job_id": "job-1",
         "submission_id": "sub-1",
@@ -164,7 +178,9 @@ def test_execute_job_runs_command(monkeypatch: Any, worker: JobWorker, status: D
     assert status.calls[-1][1] == JobStatus.COMPLETED
 
 
-def test_execute_job_invalid_path_updates_status(worker: JobWorker, status: DummyStatus, storage: DummyStorage) -> None:
+def test_execute_job_invalid_path_updates_status(
+    worker: JobWorker, status: DummyStatus, storage: DummyStorage
+) -> None:
     job = {
         "job_id": "job-2",
         "submission_id": "sub-1",
@@ -181,7 +197,13 @@ def test_execute_job_invalid_path_updates_status(worker: JobWorker, status: Dumm
     assert status.calls[-1][1] == JobStatus.FAILED
 
 
-def test_run_processes_job(monkeypatch: Any, storage: DummyStorage, status: DummyStatus, tracking: DummyTracking, tmp_path: Path) -> None:
+def test_run_processes_job(
+    monkeypatch: Any,
+    storage: DummyStorage,
+    status: DummyStatus,
+    tracking: DummyTracking,
+    tmp_path: Path,
+) -> None:
     # Setup logs_root
     logs_root = tmp_path / "logs"
     logs_root.mkdir(parents=True, exist_ok=True)
@@ -221,7 +243,9 @@ def test_run_processes_job(monkeypatch: Any, storage: DummyStorage, status: Dumm
     assert status.calls[-1][1] == JobStatus.COMPLETED
 
 
-def test_execute_job_timeout_updates_status(monkeypatch: Any, worker: JobWorker, status: DummyStatus, storage: DummyStorage, tmp_path: Path) -> None:
+def test_execute_job_timeout_updates_status(
+    monkeypatch: Any, worker: JobWorker, status: DummyStatus, storage: DummyStorage, tmp_path: Path
+) -> None:
     job = {
         "job_id": "job-timeout",
         "submission_id": "sub-1",
@@ -254,7 +278,9 @@ def test_execute_job_timeout_updates_status(monkeypatch: Any, worker: JobWorker,
     assert "timeout" in status.calls[-1][2]["error"]
 
 
-def test_execute_job_oom_sets_error(monkeypatch: Any, worker: JobWorker, status: DummyStatus, storage: DummyStorage, tmp_path: Path) -> None:
+def test_execute_job_oom_sets_error(
+    monkeypatch: Any, worker: JobWorker, status: DummyStatus, storage: DummyStorage, tmp_path: Path
+) -> None:
     job = {
         "job_id": "job-oom",
         "submission_id": "sub-1",
@@ -292,7 +318,12 @@ def test_execute_job_oom_sets_error(monkeypatch: Any, worker: JobWorker, status:
 
 
 def test_execute_job_loads_metrics_and_logs_to_mlflow(
-    monkeypatch: Any, worker: JobWorker, status: DummyStatus, storage: DummyStorage, tracking: DummyTracking, tmp_path: Path
+    monkeypatch: Any,
+    worker: JobWorker,
+    status: DummyStatus,
+    storage: DummyStorage,
+    tracking: DummyTracking,
+    tmp_path: Path,
 ) -> None:
     job = {
         "job_id": "job-metrics",
@@ -334,7 +365,12 @@ def test_execute_job_loads_metrics_and_logs_to_mlflow(
 
 
 def test_execute_job_saves_training_log(
-    monkeypatch: Any, worker: JobWorker, status: DummyStatus, storage: DummyStorage, tracking: DummyTracking, tmp_path: Path
+    monkeypatch: Any,
+    worker: JobWorker,
+    status: DummyStatus,
+    storage: DummyStorage,
+    tracking: DummyTracking,
+    tmp_path: Path,
 ) -> None:
     """Test that logs are written directly to logs directory via Popen."""
     job = {
@@ -384,7 +420,12 @@ def test_execute_job_saves_training_log(
 
 
 def test_execute_job_mlflow_failure_updates_status(
-    monkeypatch: Any, worker: JobWorker, status: DummyStatus, storage: DummyStorage, tracking: DummyTracking, tmp_path: Path
+    monkeypatch: Any,
+    worker: JobWorker,
+    status: DummyStatus,
+    storage: DummyStorage,
+    tracking: DummyTracking,
+    tmp_path: Path,
 ) -> None:
     job = {
         "job_id": "job-mlflow",
@@ -410,7 +451,9 @@ def test_execute_job_mlflow_failure_updates_status(
     worker.status = status
     worker.tracking = tracking
     worker.queue = MagicMock()
-    monkeypatch.setattr(worker.tracking, "start_run", MagicMock(side_effect=RuntimeError("not reachable")))
+    monkeypatch.setattr(
+        worker.tracking, "start_run", MagicMock(side_effect=RuntimeError("not reachable"))
+    )
 
     with pytest.raises(RuntimeError):
         worker.execute_job(job)
@@ -482,7 +525,12 @@ def test_execute_job_fails_when_metrics_json_invalid(
 
 
 def test_execute_job_creates_log_file_at_start(
-    monkeypatch: Any, worker: JobWorker, status: DummyStatus, storage: DummyStorage, tracking: DummyTracking, tmp_path: Path
+    monkeypatch: Any,
+    worker: JobWorker,
+    status: DummyStatus,
+    storage: DummyStorage,
+    tracking: DummyTracking,
+    tmp_path: Path,
 ) -> None:
     """ジョブ開始時にログファイルが作成されることを検証"""
     job = {
@@ -523,7 +571,12 @@ def test_execute_job_creates_log_file_at_start(
 
 
 def test_execute_job_streams_output_to_log_file(
-    monkeypatch: Any, worker: JobWorker, status: DummyStatus, storage: DummyStorage, tracking: DummyTracking, tmp_path: Path
+    monkeypatch: Any,
+    worker: JobWorker,
+    status: DummyStatus,
+    storage: DummyStorage,
+    tracking: DummyTracking,
+    tmp_path: Path,
 ) -> None:
     """stdout/stderrがログファイルに直接ストリーミングされることを検証"""
     job = {
@@ -551,7 +604,7 @@ def test_execute_job_streams_output_to_log_file(
         nonlocal captured_stdout
         captured_stdout = stdout
         # Write some test output to the file
-        if stdout and hasattr(stdout, 'write'):
+        if stdout and hasattr(stdout, "write"):
             stdout.write("Test output line 1\n")
             stdout.write("Test output line 2\n")
             stdout.flush()

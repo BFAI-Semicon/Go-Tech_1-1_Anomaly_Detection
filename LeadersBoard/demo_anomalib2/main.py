@@ -106,7 +106,7 @@ def run_training(config: DictConfig, output_dir: Path) -> None:
         test_metrics=[
             AUROC(fields=["pred_score", "gt_label"], prefix="image_"),
             AUPR(fields=["pred_score", "gt_label"], prefix="image_"),
-            F1Score(fields=["pred_label", "gt_label"], prefix="image_")
+            F1Score(fields=["pred_label", "gt_label"], prefix="image_"),
         ]
     )
     model.evaluator = evaluator
@@ -135,11 +135,17 @@ def run_training(config: DictConfig, output_dir: Path) -> None:
 
     # テストデータの数を取得（FPS計算用）
     test_dataloader = datamodule.test_dataloader()
-    if hasattr(test_dataloader, '__len__'):
-        num_test_samples = len(test_dataloader.dataset) if hasattr(test_dataloader, 'dataset') else sum(len(batch) for batch in test_dataloader)
+    if hasattr(test_dataloader, "__len__"):
+        num_test_samples = (
+            len(test_dataloader.dataset)
+            if hasattr(test_dataloader, "dataset")
+            else sum(len(batch) for batch in test_dataloader)
+        )
     else:
         # fallback: バッチ数をカウント
-        num_test_samples = sum(len(batch[0]) for batch in test_dataloader)  # assuming first element is input
+        num_test_samples = sum(
+            len(batch[0]) for batch in test_dataloader
+        )  # assuming first element is input
 
     LOGGER.info(f"Test dataset size: {num_test_samples} samples")
 
@@ -169,7 +175,7 @@ def run_training(config: DictConfig, output_dir: Path) -> None:
             try:
                 if isinstance(value, (int, float)):
                     metrics[key] = float(value)
-                elif hasattr(value, 'item'):
+                elif hasattr(value, "item"):
                     metrics[key] = float(value.item())
                 else:
                     LOGGER.warning(f"Unsupported metric type for {key}: {type(value)}")
@@ -220,10 +226,7 @@ def main() -> None:
     logging.basicConfig(
         level=logging.INFO,
         format="%(levelname)s: %(message)s",
-        handlers=[
-            logging.FileHandler(log_file),
-            logging.StreamHandler()
-        ]
+        handlers=[logging.FileHandler(log_file), logging.StreamHandler()],
     )
 
     config = OmegaConf.load(args.config)

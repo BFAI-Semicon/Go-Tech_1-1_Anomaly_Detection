@@ -92,7 +92,9 @@ def test_get_job_logs_success() -> None:
 
 def test_get_job_results_success() -> None:
     override_current_user()
-    override_job_results(DummyJobResultsUseCase({"job_id": "job-1", "mlflow_ui_link": "http://mlflow"}))
+    override_job_results(
+        DummyJobResultsUseCase({"job_id": "job-1", "mlflow_ui_link": "http://mlflow"})
+    )
 
     response = client.get(
         "/jobs/job-1/results",

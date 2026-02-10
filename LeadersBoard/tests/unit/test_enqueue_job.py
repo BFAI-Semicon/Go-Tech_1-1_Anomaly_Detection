@@ -42,7 +42,14 @@ class DummyQueue(JobQueuePort):
     def __init__(self) -> None:
         self.jobs: list[tuple[str, str, str, str, dict[str, Any]]] = []
 
-    def enqueue(self, job_id: str, submission_id: str, entrypoint: str, config_file: str, config: dict[str, Any]) -> None:
+    def enqueue(
+        self,
+        job_id: str,
+        submission_id: str,
+        entrypoint: str,
+        config_file: str,
+        config: dict[str, Any],
+    ) -> None:
         self.jobs.append((job_id, submission_id, entrypoint, config_file, config))
 
     def dequeue(self, timeout: int = 0):

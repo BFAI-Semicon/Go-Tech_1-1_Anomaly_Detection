@@ -70,6 +70,11 @@ class RedisJobStatusAdapter(JobStatusPort):
                 continue
             owner = raw.get(b"user_id")
             status = raw.get(b"status")
-            if owner and owner.decode() == user_id and status and status.decode() == JobStatus.RUNNING.value:
+            if (
+                owner
+                and owner.decode() == user_id
+                and status
+                and status.decode() == JobStatus.RUNNING.value
+            ):
                 running += 1
         return running

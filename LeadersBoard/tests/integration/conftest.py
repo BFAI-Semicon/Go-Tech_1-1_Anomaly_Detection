@@ -72,7 +72,9 @@ def integration_context(tmp_path: Path) -> IntegrationContext:
     status_adapter = RedisJobStatusAdapter(fake_redis)
     rate_limit_adapter = RedisRateLimitAdapter(fake_redis)
     tracking_adapter = MockTrackingAdapter()
-    job_worker = JobWorker(queue_adapter, status_adapter, storage, tracking_adapter, artifacts_root=artifacts_root)
+    job_worker = JobWorker(
+        queue_adapter, status_adapter, storage, tracking_adapter, artifacts_root=artifacts_root
+    )
 
     overrides = {
         submissions_module.get_storage: lambda: storage,
