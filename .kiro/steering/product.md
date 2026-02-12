@@ -31,9 +31,9 @@ ML実験プラットフォーム「LeadersBoard」は、外部からの投稿（
 
 - **Version**: 0.1.0
 - **Phase**: 本番準備完了（コア機能・UI・ドキュメント完備）
-- **Test Coverage**: 75%以上（目標達成）
+- **Test Coverage**: 74%以上（ユニット）、77%（統合含む）
 - **Implementation**: T1-T15完了（コア機能・統合テスト）+ T16.1（UI自動更新）+ T19（ドキュメント）
-- **Test Count**: 62件（ユニット）+ 10件（統合）
+- **Test Count**: 74件（ユニット）+ 13件（統合）
 - **UI Capabilities**: 提出フォーム、ジョブ一覧（自動更新対応）、ステータス監視、ログ表示、MLflowリンク生成
 - **Documentation**: README.md、API仕様（docs/api.md）、デプロイ手順（docs/deployment.md）完備
-- **Specifications**: streamlit-realtime-worker-logs 仕様初期化完了
+- **Specifications**: streamlit-realtime-worker-logs 仕様初期化完了、migrate-formatter-to-ruff 完了

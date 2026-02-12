@@ -82,8 +82,8 @@
 
 - **Framework**: `pytest`
 - **Coverage**: 80%以上推奨（ドメインロジック・ポート実装は必須）
-  - **現在の達成状況**: 90.8%（目標達成）
-  - **テスト数**: 65件（ユニット55件 + 統合10件）
+  - **現在の達成状況**: 74%（ユニット）/ 77%（統合含む）
+  - **テスト数**: 87件（ユニット74件 + 統合13件）
 - **Integration Test**: docker-compose環境でエンドツーエンドテスト
 - **Test Organization**:
   - `/tests/unit/` - モックアダプタを使用した高速テスト（ドメイン・アダプタ・API・Worker・Streamlit UI）
@@ -303,5 +303,5 @@ render_jobs_with_auto_refresh = st.fragment(run_every="5s")(_render_jobs)
 
 ## Maintenance
 
-- updated_at: 2026-02-06
-- reason: streamlit-realtime-worker-logs機能（リアルタイムログストリーミング、tail処理、UI改善）を反映
+- updated_at: 2026-02-12
+- reason: Sync - テスト件数・カバレッジを実態に合わせて更新（74件ユニット/13件統合、74-77%）
