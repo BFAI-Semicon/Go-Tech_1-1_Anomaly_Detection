@@ -8,4 +8,4 @@ alwaysApply: true
 
 ## Rules
 
-- Markdownを作成・更新する際は、markdownlintのメッセージを必ず解消する。
+- Markdownを作成・更新する際は、`pymarkdown scan` のメッセージを必ず解消する。

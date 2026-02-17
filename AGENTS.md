@@ -23,8 +23,8 @@ Kiro-style Spec Driven Development implementation on AI-DLC
 ## Development Guidelines
 
 - Think in English, and generate responses in Japanese.  
-  All Markdown content for project files must use the target language for this specification  
-  (`spec.json.language`).  
+  All Markdown content for project files must use the target language for
+  this specification (`spec.json.language`).  
   Applies to requirements, design, tasks, research, and validation reports.
 
 ## Minimal Workflow
@@ -48,7 +48,8 @@ Kiro-style Spec Driven Development implementation on AI-DLC
 - Keep steering current and verify alignment with `/kiro/spec-status`
 - Follow the user's instructions precisely,  
   and within that scope act autonomously.  
-  Gather the necessary context and do the requested work end-to-end in this run.  
+  Gather the necessary context and do the requested work end-to-end in this
+  run.  
   Ask questions only when essential information is missing  
   or the instructions are critically ambiguous.
 
@@ -60,7 +61,7 @@ Kiro-style Spec Driven Development implementation on AI-DLC
 
 ## コーディングルール
 
-- .mdファイルを編集した場合、markdownlintを実行し問題を解消する
+- .mdファイルを編集した場合、`pymarkdown scan` を実行し問題を解消する
 - .pyファイルを編集した場合、`ruff check --fix .` を実行する
 - .pyファイルを編集した場合、`mypy` の警告・エラーがあれば解消する
 - Python の変数名はスネークケースとし、単語をアンダースコアなしでつないだ命名がある場合はアンダースコアで区切る
