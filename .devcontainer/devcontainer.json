@@ -22,6 +22,7 @@
 				]
 			},
 			"extensions": [
+				"bierner.markdown-mermaid",
 				"charliermarsh.ruff",
 				"csholmq.excel-to-markdown-table",
 				"davidanson.vscode-markdownlint",
