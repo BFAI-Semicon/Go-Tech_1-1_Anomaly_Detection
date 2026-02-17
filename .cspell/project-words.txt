@@ -138,6 +138,7 @@ pycodestyle
 Pydantic
 Pyflakes
 pylance
+pymarkdown
 pymarkdownlnt
 pyproject
 pytest
@@ -156,6 +157,7 @@ Schlosser
 scikit
 semicon
 setuptools
+shuworks
 SimpleNet
 SPADE
 SPIE
