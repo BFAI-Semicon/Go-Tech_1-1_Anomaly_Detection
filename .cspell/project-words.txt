@@ -16,6 +16,7 @@ autouse
 Barusco
 bfai
 BGSAVE
+bierner
 Borsatti
 BRPOP
 BTAD

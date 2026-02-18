@@ -3,4 +3,5 @@ __pycache__
 .DS_Store
 .env
 .mypy_cache
+*.pdf
 *.zip
