@@ -22,6 +22,7 @@ BRPOP
 BTAD
 buildx
 Byungseok
+Censys
 CFA
 CFA+
 CFlow
@@ -30,6 +31,7 @@ charliermarsh
 cifar
 ckpt
 CLAHE
+cloudflared
 Codabench
 csholmq
 CUDA
@@ -60,6 +62,7 @@ fakeredis
 fastapi
 FastFlow
 Francesco
+fullchain
 GANomaly
 getent
 getenv
@@ -72,6 +75,7 @@ Go-Tech
 hasattr
 HGETALL
 HSET
+htpasswd
 httpx
 huggingface
 Hütten
@@ -112,6 +116,8 @@ mhutchie
 MIIC
 mIoU
 MLflow
+mlops
+mlopsadmin
 MVTec
 mypy
 Neur
@@ -132,6 +138,7 @@ Peeples
 Pezze
 pipefail
 plotly
+privkey
 PRO
 PromptAD
 pycache
@@ -158,17 +165,21 @@ Schlosser
 scikit
 semicon
 setuptools
+Shodan
 shuworks
 SimpleNet
 SPADE
 SPIE
 sPRO
+stcore
 STFPM
 Streamlit
 Susto
 takumii
 TensorRT
+testpass
 testpaths
+testuser
 timm
 tmpfs
 toolsai

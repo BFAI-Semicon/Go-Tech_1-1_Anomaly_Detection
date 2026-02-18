@@ -50,6 +50,7 @@
 	},
 	// Forward ports for API, MLflow, and Redis
 	"forwardPorts": [
+		80,
 		8010,
 		5010,
 		6379
@@ -57,6 +58,10 @@
 	// Use 'portsAttributes' to set default properties for specific forwarded ports. 
 	// More info: https://containers.dev/implementors/json_reference/#port-attributes
 	"portsAttributes": {
+		"80": {
+			"label": "Nginx Gateway",
+			"onAutoForward": "notify"
+		},
 		"8010": {
 			"label": "LeadersBoard API",
 			"onAutoForward": "notify"
