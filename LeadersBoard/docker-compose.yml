@@ -67,11 +67,25 @@ services:
     command: redis-server --appendonly yes
     restart: unless-stopped
 
+  nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/auth:/etc/nginx/auth:ro
+      - ./nginx/entrypoint.sh:/etc/nginx/entrypoint.sh:ro
+    entrypoint: ["/bin/sh", "/etc/nginx/entrypoint.sh"]
+    depends_on:
+      - mlflow
+      - streamlit
+    restart: unless-stopped
+
   mlflow:
     image: ghcr.io/mlflow/mlflow:latest
     user: "${APP_UID:-1000}:${APP_GID:-1000}"
-    ports:
-      - "5010:5010"
+    expose:
+      - "5010"
     environment:
       - MLFLOW_BACKEND_STORE_URI=sqlite:////shared/mlflow.db
       - MLFLOW_DEFAULT_ARTIFACT_ROOT=file:///shared/artifacts
@@ -94,9 +108,9 @@ services:
       - .env
     environment:
       - API_URL=${API_URL:-http://api:8010}
-      - MLFLOW_URL=${MLFLOW_URL:-http://mlflow:5010}
-    ports:
-      - "8501:8501"
+      - MLFLOW_URL=${MLFLOW_URL:-/mlflow}
+    expose:
+      - "8501"
     depends_on:
       - api
       - mlflow

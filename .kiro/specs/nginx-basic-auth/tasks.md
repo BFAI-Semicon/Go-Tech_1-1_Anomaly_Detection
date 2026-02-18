@@ -51,12 +51,12 @@ Basic 認証、パスルーティング（`/mlflow/` と `/streamlit/`）、WebS
 
 **Done when**:
 
-- [ ] `nginx/conf.d/default.conf` が `/mlflow/` と `/streamlit/` の両方を定義している
-- [ ] Basic 認証が両パスに適用されている
-- [ ] WebSocket ヘッダー（Upgrade/Connection）が Streamlit パスで転送される
-- [ ] MLflow パスで rewrite が設定されている
-- [ ] `entrypoint.sh` が htpasswd 不在時に終了コード 1 で失敗する
-- [ ] ログが標準出力に設定されている
+- [x] `nginx/conf.d/default.conf` が `/mlflow/` と `/streamlit/` の両方を定義している
+- [x] Basic 認証が両パスに適用されている
+- [x] WebSocket ヘッダー（Upgrade/Connection）が Streamlit パスで転送される
+- [x] MLflow パスで rewrite が設定されている
+- [x] `entrypoint.sh` が htpasswd 不在時に終了コード 1 で失敗する
+- [x] ログが標準出力に設定されている
 
 ---
 
@@ -91,11 +91,11 @@ Basic 認証、パスルーティング（`/mlflow/` と `/streamlit/`）、WebS
 
 **Done when**:
 
-- [ ] Nginx サービスがポート 80 で定義されている
-- [ ] MLflow が `expose` のみで外部公開されていない
-- [ ] Streamlit が `expose` のみで外部公開されていない
-- [ ] API が `ports: "8010:8010"` を維持している
-- [ ] Nginx が `restart: unless-stopped` で定義されている
+- [x] Nginx サービスがポート 80 で定義されている
+- [x] MLflow が `expose` のみで外部公開されていない
+- [x] Streamlit が `expose` のみで外部公開されていない
+- [x] API が `ports: "8010:8010"` を維持している
+- [x] Nginx が `restart: unless-stopped` で定義されている
 
 ---
 
@@ -125,9 +125,9 @@ Dockerfile の起動コマンドに `--server.baseUrlPath /streamlit/` を追加
 
 **Done when**:
 
-- [ ] Streamlit が `--server.baseUrlPath /streamlit/` で起動する
-- [ ] 既存のトークン入力フローが変更されていない
-- [ ] `build_mlflow_run_link` が正しいパスを生成する
+- [x] Streamlit が `--server.baseUrlPath /streamlit/` で起動する
+- [x] 既存のトークン入力フローが変更されていない
+- [x] `build_mlflow_run_link` が正しいパスを生成する
 
 ---
 
@@ -156,10 +156,10 @@ Dockerfile の起動コマンドに `--server.baseUrlPath /streamlit/` を追加
 
 **Done when**:
 
-- [ ] `nginx/auth/` が `.gitignore` に含まれている
-- [ ] `.env.example` に `htpasswd` 作成手順が記載されている
-- [ ] Docker ベースの代替手順が記載されている
-- [ ] `MLFLOW_URL` が `/mlflow` に更新されている
+- [x] `nginx/auth/` が `.gitignore` に含まれている
+- [x] `.env.example` に `htpasswd` 作成手順が記載されている
+- [x] Docker ベースの代替手順が記載されている
+- [x] `MLFLOW_URL` が `/mlflow` に更新されている
 
 ---
 
@@ -188,10 +188,10 @@ Dockerfile の起動コマンドに `--server.baseUrlPath /streamlit/` を追加
 
 **Done when**:
 
-- [ ] `docker-compose.prod.yml` に Nginx サービスが定義されている
-- [ ] 本番環境の `htpasswd` パスがマウント可能である
-- [ ] `deploy.yml` が `htpasswd` の存在を検証する
-- [ ] デプロイコマンドが既存の compose 引数で正常動作する
+- [x] `docker-compose.prod.yml` に Nginx サービスが定義されている
+- [x] 本番環境の `htpasswd` パスがマウント可能である
+- [x] `deploy.yml` が `htpasswd` の存在を検証する
+- [x] デプロイコマンドが既存の compose 引数で正常動作する
 
 ---
 
@@ -219,9 +219,9 @@ devcontainer 構成を更新して、Nginx 導入後も
 
 **Done when**:
 
-- [ ] ポート 80 が `forwardPorts` に含まれている
-- [ ] 既存のポート（8010、5010、6379）が維持されている
-- [ ] `portsAttributes` にポート 80 のラベルが設定されている
+- [x] ポート 80 が `forwardPorts` に含まれている
+- [x] 既存のポート（8010、5010、6379）が維持されている
+- [x] `portsAttributes` にポート 80 のラベルが設定されている
 
 ---
 
@@ -245,8 +245,8 @@ MLflow run リンクがブラウザから Nginx 経由でアクセス可能に�
 
 **Done when**:
 
-- [ ] `MLFLOW_URL` のデフォルト値が `/mlflow` になっている
-- [ ] `build_mlflow_run_link` が正しいパスを生成する
+- [x] `MLFLOW_URL` のデフォルト値が `/mlflow` になっている
+- [x] `build_mlflow_run_link` が正しいパスを生成する
 
 ---
 
@@ -277,9 +277,9 @@ Nginx 導入に伴う構成変更を反映する。
 
 **Done when**:
 
-- [ ] `structure.md` に Nginx ディレクトリとサービスの記述がある
-- [ ] `tech.md` に二層認証モデルの記述がある
-- [ ] `spec.json` が `tasks-generated` フェーズになっている
+- [x] `structure.md` に Nginx ディレクトリとサービスの記述がある
+- [x] `tech.md` に二層認証モデルの記述がある
+- [x] `spec.json` が `tasks-generated` フェーズになっている
 
 ---
 
@@ -316,9 +316,9 @@ compose 起動、認証、パスルーティング、WebSocket、
 
 **Done when**:
 
-- [ ] 未認証で `/mlflow/` と `/streamlit/` が 401 を返す
-- [ ] 認証後に MLflow UI と Streamlit UI が正常表示される
-- [ ] API が `8010` で直接アクセスできる
-- [ ] MLflow と Streamlit が外部から直接アクセスできない
-- [ ] `htpasswd` 不在時に Nginx が起動失敗する
-- [ ] Streamlit の既存トークンフローが動作する
+- [x] 未認証で `/mlflow/` と `/streamlit/` が 401 を返す
+- [x] 認証後に MLflow UI と Streamlit UI が正常表示される
+- [x] API が `8010` で直接アクセスできる
+- [x] MLflow と Streamlit が外部から直接アクセスできない
+- [x] `htpasswd` 不在時に Nginx が起動失敗する
+- [x] Streamlit の既存トークンフローが動作する
