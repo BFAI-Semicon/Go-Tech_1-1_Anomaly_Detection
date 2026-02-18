@@ -18,8 +18,8 @@ RUN (getent group ${APP_GID} || groupadd --gid ${APP_GID} appgroup) && \
 USER ${APP_UID}
 
 ENV API_URL=http://api:8010 \
-    MLFLOW_URL=http://mlflow:5010
+    MLFLOW_URL=/mlflow
 
 EXPOSE 8501
 
-CMD ["streamlit", "run", "src/streamlit/app.py", "--server.port", "8501", "--server.address", "0.0.0.0"]
+CMD ["streamlit", "run", "src/streamlit/app.py", "--server.port", "8501", "--server.address", "0.0.0.0", "--server.baseUrlPath", "/streamlit/"]

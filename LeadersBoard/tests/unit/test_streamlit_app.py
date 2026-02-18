@@ -12,6 +12,16 @@ def test_build_mlflow_run_link() -> None:
     assert link == "http://mlflow:5010/#/experiments/1/runs/run-123"
 
 
+def test_build_mlflow_run_link_with_subpath() -> None:
+    link = streamlit_app.build_mlflow_run_link("/mlflow", "run-456")
+    assert link == "/mlflow/#/experiments/1/runs/run-456"
+
+
+def test_build_mlflow_run_link_trailing_slash() -> None:
+    link = streamlit_app.build_mlflow_run_link("/mlflow/", "run-789")
+    assert link == "/mlflow/#/experiments/1/runs/run-789"
+
+
 @patch("src.streamlit.app.requests.post")
 def test_submit_submission_sends_files_and_metadata(mock_post: MagicMock) -> None:
     file_tuple = ("main.py", BytesIO(b"print('hello')"), "text/x-python")

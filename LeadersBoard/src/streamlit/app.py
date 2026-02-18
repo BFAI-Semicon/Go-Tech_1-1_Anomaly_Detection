@@ -261,6 +261,8 @@ def _render_jobs(api_url: str, mlflow_url: str) -> None:
 
                 # セッションステートを更新
                 job["status"] = status_text
+                if status_data and status_data.get("run_id"):
+                    job["run_id"] = status_data["run_id"]
 
                 # 実行中ジョブの検出
                 if status_text in ("pending", "running"):
@@ -270,8 +272,9 @@ def _render_jobs(api_url: str, mlflow_url: str) -> None:
                 emoji = get_status_color(status_text)
                 st.markdown(f"{emoji} **{status_text}**")
 
-                if status_data and status_data.get("run_id"):
-                    link = build_mlflow_run_link(mlflow_url, status_data["run_id"])
+                run_id = job.get("run_id")
+                if run_id:
+                    link = build_mlflow_run_link(mlflow_url, run_id)
                     st.markdown(f"[MLflow run]({link})")
 
             # ログ表示エリア

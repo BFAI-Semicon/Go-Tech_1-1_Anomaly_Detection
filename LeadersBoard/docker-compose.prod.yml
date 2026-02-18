@@ -11,6 +11,10 @@ services:
     volumes:
       - ${SHARED_DATA_DIR:-./shared}:/shared
 
+  nginx:
+    volumes:
+      - ${NGINX_AUTH_DIR:-./nginx/auth}:/etc/nginx/auth:ro
+
   mlflow:
     user: "${APP_UID}:${APP_GID}"
     volumes:

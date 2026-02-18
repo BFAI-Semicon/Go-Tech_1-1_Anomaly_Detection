@@ -5,9 +5,18 @@
 - **Clean-lite設計（依存逆転）**: API/WorkerはMLflowバックエンドDBに直接依存せず、HTTP/RESTのみ使用
 - **ポート/アダプタパターン**: `StoragePort`, `JobQueuePort`, `JobStatusPort`, `TrackingPort`
 - **非同期ジョブ実行**: Redisキュー（ブロッキング取得: `BRPOP` または `XREADGROUP BLOCK`）+ GPUワーカー
-- **コンテナベース**: docker-compose単機構成（FastAPI、Redis、MLflow、Worker、任意でStreamlit）
+- **コンテナベース**: docker-compose単機構成（Nginx、FastAPI、Redis、MLflow、Worker、Streamlit）
+- **Nginx リバースプロキシ**: Basic 認証付き入口ゲートウェイ。`/mlflow/` と `/streamlit/` を同一ホストで公開し、MLflow と Streamlit の直接公開を停止
 
-## API Authentication
+## Authentication
+
+### 二層認証モデル
+
+- **入口認証（Nginx Basic 認証）**: ブラウザから Nginx へ到達する入口で ID/Password を確認する。`/mlflow/` と `/streamlit/` の両パスに適用。`htpasswd` ファイルで認証情報を管理。
+- **アプリ内認可（Bearer トークン）**: Streamlit から API を呼ぶ際の操作権限を確認する。Basic 認証通過だけではジョブ投入できない設計を維持。
+- **API は Nginx 保護対象外**: `api:8010` は既存の Bearer トークン認証を持つため、Nginx を経由せず直接公開を維持。
+
+### API Authentication
 
 - API は `Authorization: Bearer <token>` を必須とし、`get_current_user` によって `API_TOKENS` 環境変数のカンマ区切りリストへ照合。リストが空でもヘッダー自体は必須なので、トークンベースの保護を環境変数で集中管理できる設計。
 - この認証依存性は FastAPI の依存性注入で `jobs` / `submissions` ルーター間で再利用され、コード上の各エンドポイントが同じトークンロジックを参照。
@@ -26,9 +35,10 @@
 ### Container Runtime
 
 - **Base Image (GPU)**: `nvcr.io/nvidia/pytorch:25.11-py3`（PyTorch 2.10 開発版、CUDA 対応）
+- **起動方式（Nginx）**: `nginx:1.27-alpine`（Basic 認証 + リバースプロキシ、ポート 80）
 - **起動方式（API）**: `uvicorn`（`src.api.main:app`）
 - **起動方式（Worker）**: `python -m src.worker.main`
-- **起動方式（Streamlit）**: `streamlit run src/streamlit/app.py --server.port 8501`
+- **起動方式（Streamlit）**: `streamlit run src/streamlit/app.py --server.port 8501 --server.baseUrlPath /streamlit/`
 
 ## Key Libraries
 
@@ -83,7 +93,7 @@
 - **Framework**: `pytest`
 - **Coverage**: 80%以上推奨（ドメインロジック・ポート実装は必須）
   - **現在の達成状況**: 74%（ユニット）/ 77%（統合含む）
-  - **テスト数**: 87件（ユニット74件 + 統合13件）
+  - **テスト数**: 107件（ユニット94件 + 統合13件）
 - **Integration Test**: docker-compose環境でエンドツーエンドテスト
 - **Test Organization**:
   - `/tests/unit/` - モックアダプタを使用した高速テスト（ドメイン・アダプタ・API・Worker・Streamlit UI）
@@ -111,7 +121,8 @@
 
 - **Trigger**: push to `main`（`LeadersBoard/**` 変更時）、または手動実行
 - **Runner**: self-hosted (Linux, X64, prod)
-- **Steps**: `docker compose -f docker-compose.yml -f docker-compose.prod.yml pull && up -d`
+- **Steps**: htpasswd 存在検証 → `.env` 準備
+  （`NGINX_AUTH_DIR` 含む）→ `docker compose pull && up -d`
 - **Purpose**: 本番環境への自動デプロイ（プリビルドイメージ使用）
 
 ### Container Registry
@@ -145,12 +156,23 @@
 ```yaml
 # LeadersBoard/docker-compose.yml（本番用）
 services:
+  nginx:
+    image: nginx:1.27-alpine
+    ports: ["80:80"]
+    # Basic認証 + /mlflow/ と /streamlit/ へのリバースプロキシ
+
   api:
     build:
       context: .
       dockerfile: docker/api.Dockerfile
       target: prod  # 本番ステージ
-    # ...
+    ports: ["8010:8010"]  # Nginx保護対象外（Bearer認証あり）
+
+  mlflow:
+    expose: ["5010"]  # Nginx経由のみ（直接公開停止）
+
+  streamlit:
+    expose: ["8501"]  # Nginx経由のみ（直接公開停止）
 
 # .devcontainer/docker-compose.override.yml（開発用オーバーライド）
 services:
@@ -273,7 +295,7 @@ render_jobs_with_auto_refresh = st.fragment(run_every="5s")(_render_jobs)
 ### Environment Variables
 
 - `API_URL`: FastAPI エンドポイント（デフォルト: `http://api:8010`）
-- `MLFLOW_URL`: MLflow UI URL（デフォルト: `http://mlflow:5010`）
+- `MLFLOW_URL`: MLflow UI URL（デフォルト: `/mlflow`、ブラウザからの相対パス）
 
 ### Streamlit Testing
 
@@ -303,5 +325,5 @@ render_jobs_with_auto_refresh = st.fragment(run_every="5s")(_render_jobs)
 
 ## Maintenance
 
-- updated_at: 2026-02-12
-- reason: Sync - テスト件数・カバレッジを実態に合わせて更新（74件ユニット/13件統合、74-77%）
+- updated_at: 2026-02-18
+- reason: nginx-basic-auth - 二層認証モデル、Nginx リバースプロキシ構成を追加
