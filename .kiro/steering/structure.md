@@ -278,14 +278,14 @@ from src.adapters.filesystem_storage_adapter import FileSystemStorageAdapter
 - **ユニットテスト**: ドメイン・ポート実装（モックアダプタ使用）
   - **Location**: `/tests/unit/`
   - **Focus**: ドメインロジック・アダプタの単体テスト
-  - **Count**: 74件
+  - **Count**: 94件
 - **統合テスト**: docker-compose環境でエンドツーエンド（実Redis・MLflow使用）
   - **Location**: `/tests/integration/`
   - **Coverage**: エンドツーエンドフロー、metrics.json読み取り、セキュリティ（パストラバーサル）、エラーハンドリング（OOM、タイムアウト、metrics.json不在/不正）
   - **Count**: 13件
 - **境界テスト**: ファイルサイズ上限、タイムアウト、重複投入、OOM等
 - **Overall Coverage**: 74%（ユニット）/ 77%（統合含む）
-- **Total Tests**: 87件
+- **Total Tests**: 107件
 
 ## Maintenance
 

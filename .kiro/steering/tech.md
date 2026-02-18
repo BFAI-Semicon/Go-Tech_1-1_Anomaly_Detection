@@ -93,7 +93,7 @@
 - **Framework**: `pytest`
 - **Coverage**: 80%以上推奨（ドメインロジック・ポート実装は必須）
   - **現在の達成状況**: 74%（ユニット）/ 77%（統合含む）
-  - **テスト数**: 87件（ユニット74件 + 統合13件）
+  - **テスト数**: 107件（ユニット94件 + 統合13件）
 - **Integration Test**: docker-compose環境でエンドツーエンドテスト
 - **Test Organization**:
   - `/tests/unit/` - モックアダプタを使用した高速テスト（ドメイン・アダプタ・API・Worker・Streamlit UI）
@@ -121,7 +121,8 @@
 
 - **Trigger**: push to `main`（`LeadersBoard/**` 変更時）、または手動実行
 - **Runner**: self-hosted (Linux, X64, prod)
-- **Steps**: `docker compose -f docker-compose.yml -f docker-compose.prod.yml pull && up -d`
+- **Steps**: htpasswd 存在検証 → `.env` 準備
+  （`NGINX_AUTH_DIR` 含む）→ `docker compose pull && up -d`
 - **Purpose**: 本番環境への自動デプロイ（プリビルドイメージ使用）
 
 ### Container Registry
