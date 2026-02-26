@@ -49,6 +49,7 @@ davidanson
 Davide
 debugpy
 DeepPCB
+deque
 devcontainers
 devtoken
 DFKDE
@@ -148,6 +149,7 @@ Peeples
 Pezze
 pipefail
 plotly
+Popen
 Postconditions
 privkey
 PRO

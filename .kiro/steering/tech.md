@@ -92,8 +92,7 @@
 
 - **Framework**: `pytest`
 - **Coverage**: 80%以上推奨（ドメインロジック・ポート実装は必須）
-  - **現在の達成状況**: 74%（ユニット）/ 77%（統合含む）
-  - **テスト数**: 107件（ユニット94件 + 統合13件）
+  - **テスト数**: 178件（ユニット160件 + 統合18件）
 - **Integration Test**: docker-compose環境でエンドツーエンドテスト
 - **Test Organization**:
   - `/tests/unit/` - モックアダプタを使用した高速テスト（ドメイン・アダプタ・API・Worker・Streamlit UI）
@@ -121,8 +120,7 @@
 
 - **Trigger**: push to `main`（`LeadersBoard/**` 変更時）、または手動実行
 - **Runner**: self-hosted (Linux, X64, prod)
-- **Steps**: htpasswd 存在検証 → `.env` 準備
-  （`NGINX_AUTH_DIR` 含む）→ `docker compose pull && up -d`
+- **Steps**: htpasswd 存在検証 → `.env` 準備（`NGINX_AUTH_DIR` 含む）→ `docker compose pull && up -d`
 - **Purpose**: 本番環境への自動デプロイ（プリビルドイメージ使用）
 
 ### Container Registry
@@ -206,6 +204,18 @@ cd /app/LeadersBoard
 docker-compose -f docker-compose.yml up --build
 ```
 
+### VSCode デバッグ構成
+
+`.vscode/launch.json` に5つの構成を定義:
+
+- **API Server (FastAPI)**: `uvicorn` で API を起動（`--reload` 付き）
+- **Worker**: `python -m src.worker.main` でワーカーを起動
+- **Streamlit UI**: `streamlit run` で UI を起動
+- **Pytest: Unit Tests**: ユニットテスト実行
+- **Pytest: Integration Tests**: 統合テスト実行
+
+各構成は `cwd` を `LeadersBoard/`、`envFile` を `LeadersBoard/.env` に設定。ローカルデバッグ時は `.env` に `UPLOAD_ROOT`/`LOG_ROOT`/`ARTIFACT_ROOT` をdevcontainer内の書き込み可能パスに設定する（本番不要）。
+
 ### Common Commands
 
 ```bash
@@ -253,6 +263,23 @@ docker-compose -f docker-compose.yml up --build
 - **パフォーマンスメトリクス**: `metrics.json` の `performance` フィールド（`training_time_seconds`, `peak_gpu_memory_mb`, `inference_time_ms` 等）を `system/` プレフィックス付きで MLflow に追加記録。
 - `TrackingPort.end_run()` から `run_id` を取得して `JobStatus.COMPLETED` を更新する。
 - 例外・タイムアウト・OOM・metrics.json 不在/不正時には `FAILED` として `error` メッセージを保存する。
+
+## Visualization Feature
+
+### 概要
+
+投稿者の異常検知結果（anomalib出力）を original / heatmap / mask / overlay の4タイプで可視化し、Streamlit UIで4列比較表示する。
+
+### アーキテクチャ
+
+- **投稿者側**: `visualize.py` ヘルパーが `trainer.predict()` 出力から `*_original.png`, `*_heatmap.png`, `*_mask.png`, `*_overlay.png` および CSV予測ファイルを生成。ImageNet逆変換を含む。
+- **Worker側**: `VisualizationCollector` が出力ディレクトリからPNGをスキャン・分類し `visualizations/` へ整理。`config.yaml` で有効/無効・対象タイプを制御。エラー時はグレースフル・デグラデーション。
+- **API側**: 一覧JSONとファイル返却の2エンドポイント。
+- **UI側**: 完了ジョブに対して可視化パネルを表示（画像選択 → 4列比較、CSV一覧、MLflow Artifactsリンク）。
+
+### ファイルサフィックス規約
+
+`{image_name}_{type}.png` 形式（例: `000_original.png`, `000_heatmap.png`）。Workerの `VisualizationCollector` とAPIの `GetVisualizationArtifacts` が同じサフィックスパターンで分類する。
 
 ## Streamlit UI Implementation
 
@@ -325,5 +352,5 @@ render_jobs_with_auto_refresh = st.fragment(run_every="5s")(_render_jobs)
 
 ## Maintenance
 
-- updated_at: 2026-02-18
-- reason: nginx-basic-auth - 二層認証モデル、Nginx リバースプロキシ構成を追加
+- updated_at: 2026-02-26
+- reason: defect-location-visualization - 可視化機能、VSCode デバッグ構成、テスト数更新

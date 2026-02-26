@@ -8,13 +8,15 @@ ML実験プラットフォーム「LeadersBoard」は、外部からの投稿（
 - **非同期ジョブ実行**: Redisキュー + GPUワーカーによる学習・評価の非同期実行
 - **実験可視化**: MLflow Tracking Serverによるパラメータ・メトリクス・アーティファクトの記録と比較ビュー
 - **進捗管理**: ジョブ状態・ログ・結果の取得API（`run_id` とMLflow UIリンクの返却）
+- **欠陥箇所の可視化**: 異常検知結果（original / heatmap / mask / overlay）を4列比較UIで表示し、CSV予測ファイルも提供
 - **リーダーボード**: MLflow UIの比較ビューを活用したランキング表示
-- **Web UI**: Streamlit UIによる提出フォーム、ジョブ監視、ログ表示（研究者向けフロントエンド）
+- **Web UI**: Streamlit UIによる提出フォーム、ジョブ監視、ログ表示、可視化パネル（研究者向けフロントエンド）
 
 ## Target Use Cases
 
 - **研究者（Streamlit UI）**: Web UIから手法をアップロードし、ジョブの進捗・ログをリアルタイム監視
 - **研究者（API）**: 自分の手法をアップロードし、標準データセット（例: MVTec AD）で評価結果を確認
+- **研究者**: 異常検知結果の可視化（original/heatmap/mask/overlay 4列比較、CSV予測データ）
 - **研究者**: 他の提出と比較してランキング上の位置を把握（MLflow UI経由）
 - **管理者**: ジョブの実行状況（進捗、ログ、エラー）を監視（Streamlit UI/API両対応）
 - **管理者**: MLflow UIで全実験のメトリクス・アーティファクトを一覧・比較
@@ -30,12 +32,13 @@ ML実験プラットフォーム「LeadersBoard」は、外部からの投稿（
 ## Project Status
 
 - **Version**: 0.1.0
-- **Phase**: 本番準備完了（コア機能・UI・ドキュメント完備）
-- **Test Coverage**: 74%以上（ユニット）、77%（統合含む）
-- **Implementation**: T1-T15完了（コア機能・統合テスト）+ T16.1（UI自動更新）+ T19（ドキュメント）
-- **Test Count**: 94件（ユニット）+ 13件（統合）
-- **UI Capabilities**: 提出フォーム、ジョブ一覧（自動更新対応）、ステータス監視、ログ表示、MLflowリンク生成
+- **Phase**: 本番準備完了（コア機能・UI・可視化・ドキュメント完備）
+- **Test Count**: 160件（ユニット）+ 18件（統合）= 178件
+- **Implementation**: T1-T15完了（コア機能・統合テスト）+ T16.1（UI自動更新）+ T19（ドキュメント）+ 欠陥箇所可視化
+- **UI Capabilities**: 提出フォーム、ジョブ一覧（自動更新対応）、ステータス監視、ログ表示、MLflowリンク生成、可視化パネル（4列比較）
 - **Documentation**: README.md、API仕様（docs/api.md）、デプロイ手順（docs/deployment.md）完備
 - **Specifications**: nginx-basic-auth 実装完了、
   streamlit-realtime-worker-logs 仕様初期化完了、
-  migrate-formatter-to-ruff 完了
+  migrate-formatter-to-ruff 完了、
+  defect-location-visualization 実装完了、
+  report-presentation-materials 実装完了

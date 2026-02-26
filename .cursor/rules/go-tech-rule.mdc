@@ -9,3 +9,4 @@ alwaysApply: true
 ## Rules
 
 - Markdownを作成・更新する際は、`pymarkdown scan` のメッセージを必ず解消する。
+- `.kiro/` 配下のMarkdownを検査する際は、`pymarkdown --config .kiro/.pymarkdown scan` を使用する（MD013 無効）。
