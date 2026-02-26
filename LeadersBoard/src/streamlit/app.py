@@ -10,13 +10,19 @@ import requests
 try:  # Streamlitは実行時にのみ必要。テストでは未インストールでも動作させる。
     import streamlit as st  # type: ignore[import-not-found]
 except ImportError:  # pragma: no cover - テスト環境ではstreamlitが無いことを許容
-    st = None  # type: ignore[assignment]
+    st = None
 
 
 def build_mlflow_run_link(mlflow_url: str, run_id: str) -> str:
     """MLflow UI の run リンクを生成する。"""
     base = mlflow_url.rstrip("/")
     return f"{base}/#/experiments/1/runs/{run_id}"
+
+
+def build_mlflow_artifacts_link(mlflow_url: str, run_id: str) -> str:
+    """MLflow UI のアーティファクトページリンクを生成する。"""
+    base = mlflow_url.rstrip("/")
+    return f"{base}/#/experiments/1/runs/{run_id}/artifacts"
 
 
 def submit_submission(
@@ -39,7 +45,7 @@ def submit_submission(
         url, headers=headers, files=[("files", f) for f in files], data=data, timeout=30
     )
     response.raise_for_status()
-    return response.json()
+    return cast(dict[str, Any], response.json())
 
 
 def create_job(
@@ -51,7 +57,7 @@ def create_job(
     payload = {"submission_id": submission_id, "config": config}
     response = requests.post(url, json=payload, headers=headers, timeout=30)
     response.raise_for_status()
-    return response.json()
+    return cast(dict[str, Any], response.json())
 
 
 def fetch_job_status(api_url: str, token: str, job_id: str) -> dict[str, Any] | None:
@@ -62,7 +68,18 @@ def fetch_job_status(api_url: str, token: str, job_id: str) -> dict[str, Any] | 
     if response.status_code == 404:
         return None
     response.raise_for_status()
-    return response.json()
+    return cast(dict[str, Any], response.json())
+
+
+def fetch_visualizations(api_url: str, token: str, job_id: str) -> dict[str, Any]:
+    """GET /jobs/{job_id}/visualizations を取得する。"""
+    url = api_url.rstrip("/") + f"/jobs/{job_id}/visualizations"
+    headers = {"Authorization": f"Bearer {token}"}
+    response = requests.get(url, headers=headers, timeout=15)
+    if response.status_code == 404:
+        return {"job_id": job_id, "artifacts": [], "csv_files": []}
+    response.raise_for_status()
+    return cast(dict[str, Any], response.json())
 
 
 def fetch_job_logs(api_url: str, token: str, job_id: str, tail_lines: int | None = None) -> str:
@@ -82,7 +99,7 @@ def fetch_job_logs(api_url: str, token: str, job_id: str, tail_lines: int | None
     response = requests.get(url, headers=headers, params=params, timeout=15)
     response.raise_for_status()
     data = response.json()
-    return data.get("logs", "")
+    return cast(str, data.get("logs", ""))
 
 
 def add_job_to_state(state: dict[str, Any], job: dict[str, Any]) -> list[dict[str, Any]]:
@@ -211,6 +228,75 @@ def _render_job_logs(
         st.error(f"ログ取得に失敗しました: {exc}")
 
 
+def _render_visualization_panel(
+    api_url: str,
+    token: str,
+    job_id: str,
+    run_id: str | None,
+    mlflow_url: str,
+) -> None:
+    """完了済みジョブの可視化パネルを表示する。"""
+    if st is None:  # pragma: no cover
+        return
+    if not token:
+        return
+
+    viz_data = fetch_visualizations(api_url, token, job_id)
+    artifacts = viz_data.get("artifacts", [])
+    csv_files = viz_data.get("csv_files", [])
+
+    if not artifacts:
+        st.info("可視化結果なし")
+        return
+
+    if run_id:
+        link = build_mlflow_artifacts_link(mlflow_url, run_id)
+        st.markdown(f"📦 [MLflow Artifacts]({link})")
+
+    image_groups: dict[str, dict[str, Any]] = {}
+    for art in artifacts:
+        img_name = art["filename"].rsplit("_", 1)[0] if "_" in art["filename"] else art["filename"]
+        atype = art.get("artifact_type", "unknown")
+        if img_name not in image_groups:
+            image_groups[img_name] = {}
+        image_groups[img_name][atype] = art
+
+    image_names = sorted(image_groups.keys())
+    selected = st.selectbox(
+        "対象画像を選択",
+        image_names,
+        key=f"viz_select_{job_id}",
+    )
+
+    if selected and selected in image_groups:
+        group = image_groups[selected]
+        cols = st.columns(4)
+        type_order = ["original", "heatmap", "mask", "overlay"]
+        for col, vtype in zip(cols, type_order, strict=True):
+            with col:
+                st.caption(vtype.capitalize())
+                if vtype in group:
+                    art = group[vtype]
+                    img_url = api_url.rstrip("/") + art["url"]
+                    try:
+                        resp = requests.get(
+                            img_url,
+                            headers={"Authorization": f"Bearer {token}"},
+                            timeout=15,
+                        )
+                        if resp.status_code == 200:
+                            st.image(resp.content, use_container_width=True)
+                        else:
+                            st.warning("画像を取得できません")
+                    except Exception:
+                        st.warning("画像を取得できません")
+                else:
+                    st.info("N/A")
+
+    if csv_files:
+        st.caption("📊 CSV: " + ", ".join(csv_files))
+
+
 def _render_jobs(api_url: str, mlflow_url: str) -> None:
     if st is None:  # pragma: no cover
         return
@@ -290,6 +376,16 @@ def _render_jobs(api_url: str, mlflow_url: str) -> None:
                     # 完了/失敗ジョブは折りたたみでログを表示
                     with st.expander("📋 ログを表示", expanded=False):
                         _render_job_logs(api_url, token, job_id, is_running=False)
+
+                if status_text == "completed":
+                    with st.expander("🔍 可視化結果", expanded=False):
+                        _render_visualization_panel(
+                            api_url,
+                            token,
+                            job_id,
+                            run_id=job.get("run_id"),
+                            mlflow_url=mlflow_url,
+                        )
 
             st.divider()
 

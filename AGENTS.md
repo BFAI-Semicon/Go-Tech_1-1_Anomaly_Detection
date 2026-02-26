@@ -62,6 +62,7 @@ Kiro-style Spec Driven Development implementation on AI-DLC
 ## コーディングルール
 
 - .mdファイルを編集した場合、`pymarkdown scan` を実行し問題を解消する
+- `.kiro/` 配下の .md は `pymarkdown --config .kiro/.pymarkdown scan` を使用（MD013 無効）
 - .pyファイルを編集した場合、`ruff check --fix .` を実行する
 - .pyファイルを編集した場合、`mypy` の警告・エラーがあれば解消する
 - Python の変数名はスネークケースとし、単語をアンダースコアなしでつないだ命名がある場合はアンダースコアで区切る

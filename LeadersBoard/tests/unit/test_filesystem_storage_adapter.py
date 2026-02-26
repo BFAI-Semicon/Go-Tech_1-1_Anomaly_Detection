@@ -3,6 +3,8 @@ from __future__ import annotations
 from io import BytesIO
 from pathlib import Path
 
+import pytest
+
 from src.adapters.filesystem_storage_adapter import FileSystemStorageAdapter
 
 
@@ -131,7 +133,80 @@ def test_load_logs_raises_file_not_found_when_missing(tmp_path: Path) -> None:
 
     adapter = FileSystemStorageAdapter(root, logs_root=logs_root)
 
-    import pytest
-
     with pytest.raises(FileNotFoundError):
         adapter.load_logs("nonexistent-job")
+
+
+class TestArtifactAccess:
+    """Tests for list_artifacts and load_artifact_file."""
+
+    def test_list_artifacts_returns_files(self, tmp_path):
+        adapter = FileSystemStorageAdapter(
+            tmp_path / "submissions", artifacts_root=tmp_path / "artifacts"
+        )
+        job_dir = tmp_path / "artifacts" / "job-1" / "visualizations"
+        job_dir.mkdir(parents=True)
+        (job_dir / "img_heatmap.png").write_text("x")
+        (job_dir / "img_mask.png").write_text("x")
+        result = adapter.list_artifacts("job-1")
+        assert result == ["img_heatmap.png", "img_mask.png"]
+
+    def test_list_artifacts_empty_dir(self, tmp_path):
+        adapter = FileSystemStorageAdapter(
+            tmp_path / "submissions", artifacts_root=tmp_path / "artifacts"
+        )
+        job_dir = tmp_path / "artifacts" / "job-1" / "visualizations"
+        job_dir.mkdir(parents=True)
+        assert adapter.list_artifacts("job-1") == []
+
+    def test_list_artifacts_dir_not_exists(self, tmp_path):
+        adapter = FileSystemStorageAdapter(
+            tmp_path / "submissions", artifacts_root=tmp_path / "artifacts"
+        )
+        assert adapter.list_artifacts("nonexistent") == []
+
+    def test_list_artifacts_root_subdir(self, tmp_path):
+        adapter = FileSystemStorageAdapter(
+            tmp_path / "submissions", artifacts_root=tmp_path / "artifacts"
+        )
+        job_dir = tmp_path / "artifacts" / "job-1"
+        job_dir.mkdir(parents=True)
+        (job_dir / "image_predictions.csv").write_text("data")
+        (job_dir / "metrics.json").write_text("{}")
+        result = adapter.list_artifacts("job-1", subdir="")
+        assert "image_predictions.csv" in result
+        assert "metrics.json" in result
+
+    def test_load_artifact_file_success(self, tmp_path):
+        adapter = FileSystemStorageAdapter(
+            tmp_path / "submissions", artifacts_root=tmp_path / "artifacts"
+        )
+        job_dir = tmp_path / "artifacts" / "job-1" / "visualizations"
+        job_dir.mkdir(parents=True)
+        test_file = job_dir / "img_heatmap.png"
+        test_file.write_text("png_data")
+        result = adapter.load_artifact_file("job-1", "visualizations/img_heatmap.png")
+        assert result.exists()
+        assert result.name == "img_heatmap.png"
+
+    def test_load_artifact_file_not_found(self, tmp_path):
+        adapter = FileSystemStorageAdapter(
+            tmp_path / "submissions", artifacts_root=tmp_path / "artifacts"
+        )
+        (tmp_path / "artifacts" / "job-1").mkdir(parents=True)
+        with pytest.raises(FileNotFoundError):
+            adapter.load_artifact_file("job-1", "nonexistent.png")
+
+    def test_load_artifact_file_path_traversal_dotdot(self, tmp_path):
+        adapter = FileSystemStorageAdapter(
+            tmp_path / "submissions", artifacts_root=tmp_path / "artifacts"
+        )
+        with pytest.raises(ValueError, match="不正なファイルパスです"):
+            adapter.load_artifact_file("job-1", "../../../etc/passwd")
+
+    def test_load_artifact_file_path_traversal_absolute(self, tmp_path):
+        adapter = FileSystemStorageAdapter(
+            tmp_path / "submissions", artifacts_root=tmp_path / "artifacts"
+        )
+        with pytest.raises(ValueError, match="不正なファイルパスです"):
+            adapter.load_artifact_file("job-1", "/etc/passwd")

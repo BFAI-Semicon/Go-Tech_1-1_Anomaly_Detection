@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import json
+import os
 from collections.abc import Iterable
 from pathlib import Path
-from typing import BinaryIO
+from typing import BinaryIO, cast
 
 from src.ports.storage_port import StoragePort
 
@@ -11,7 +12,12 @@ from src.ports.storage_port import StoragePort
 class FileSystemStorageAdapter(StoragePort):
     """提出ファイルをローカルファイルシステムに保存する実装."""
 
-    def __init__(self, submissions_root: Path, logs_root: Path | None = None):
+    def __init__(
+        self,
+        submissions_root: Path,
+        logs_root: Path | None = None,
+        artifacts_root: Path | None = None,
+    ):
         self.submissions_root = Path(submissions_root)
         self.submissions_root.mkdir(parents=True, exist_ok=True)
         if logs_root:
@@ -19,6 +25,9 @@ class FileSystemStorageAdapter(StoragePort):
         else:
             self.logs_root = self.submissions_root.parent / "logs"
         self.logs_root.mkdir(parents=True, exist_ok=True)
+        self.artifacts_root = artifacts_root or Path(
+            os.getenv("ARTIFACT_ROOT", "/shared/artifacts")
+        )
 
     def save(
         self,
@@ -50,7 +59,7 @@ class FileSystemStorageAdapter(StoragePort):
         metadata_path = self.submissions_root / submission_id / "metadata.json"
         if not metadata_path.exists():
             raise FileNotFoundError(metadata_path)
-        return json.loads(metadata_path.read_text())
+        return cast(dict[str, str], json.loads(metadata_path.read_text()))
 
     def exists(self, submission_id: str) -> bool:
         return (self.submissions_root / submission_id).exists()
@@ -95,3 +104,26 @@ class FileSystemStorageAdapter(StoragePort):
         if candidate:
             return Path(candidate).name
         raise ValueError("file must expose filename or name attribute")
+
+    def list_artifacts(
+        self,
+        job_id: str,
+        subdir: str = "visualizations",
+    ) -> list[str]:
+        """アーティファクトファイル名一覧"""
+        if subdir:
+            target_dir = self.artifacts_root / job_id / subdir
+        else:
+            target_dir = self.artifacts_root / job_id
+        if not target_dir.is_dir():
+            return []
+        return sorted(f.name for f in target_dir.iterdir() if f.is_file())
+
+    def load_artifact_file(self, job_id: str, filepath: str) -> Path:
+        """アーティファクトファイルの絶対パス"""
+        if filepath.startswith("/") or ".." in Path(filepath).parts:
+            raise ValueError("不正なファイルパスです")
+        full_path = self.artifacts_root / job_id / filepath
+        if not full_path.is_file():
+            raise FileNotFoundError(full_path)
+        return full_path.resolve()

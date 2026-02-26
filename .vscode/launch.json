@@ -1,0 +1,66 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "API Server (FastAPI)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "uvicorn",
+            "args": [
+                "src.api.main:app",
+                "--host", "0.0.0.0",
+                "--port", "8010",
+                "--reload"
+            ],
+            "cwd": "${workspaceFolder}/LeadersBoard",
+            "envFile": "${workspaceFolder}/LeadersBoard/.env",
+            "jinja": true
+        },
+        {
+            "name": "Worker",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "src.worker.main",
+            "cwd": "${workspaceFolder}/LeadersBoard",
+            "envFile": "${workspaceFolder}/LeadersBoard/.env"
+        },
+        {
+            "name": "Streamlit UI",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "streamlit",
+            "args": [
+                "run",
+                "src/streamlit/app.py",
+                "--server.port", "8501",
+                "--server.address", "0.0.0.0"
+            ],
+            "cwd": "${workspaceFolder}/LeadersBoard",
+            "envFile": "${workspaceFolder}/LeadersBoard/.env"
+        },
+        {
+            "name": "Pytest: Unit Tests",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "pytest",
+            "args": [
+                "tests/unit/",
+                "-v",
+                "--tb=short"
+            ],
+            "cwd": "${workspaceFolder}/LeadersBoard"
+        },
+        {
+            "name": "Pytest: Integration Tests",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "pytest",
+            "args": [
+                "tests/integration/",
+                "-v",
+                "--tb=short"
+            ],
+            "cwd": "${workspaceFolder}/LeadersBoard"
+        }
+    ]
+}

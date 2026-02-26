@@ -4,7 +4,7 @@ import subprocess
 import threading
 from pathlib import Path
 from typing import Any
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -37,6 +37,12 @@ class DummyStorage(StoragePort):
 
     def load_logs(self, job_id: str, tail_lines: int | None = None) -> str:
         return ""
+
+    def list_artifacts(self, job_id: str, subdir: str = "visualizations") -> list[str]:
+        return []
+
+    def load_artifact_file(self, job_id: str, filepath: str):
+        raise NotImplementedError
 
 
 def create_mock_popen(returncode: int = 0) -> MagicMock:
@@ -630,3 +636,214 @@ def test_execute_job_streams_output_to_log_file(
     log_content = log_path.read_text()
     assert "Test output line 1" in log_content
     assert "Test output line 2" in log_content
+
+
+def test_visualization_collection_success(
+    monkeypatch: Any,
+    worker: JobWorker,
+    status: DummyStatus,
+    storage: DummyStorage,
+    tracking: DummyTracking,
+    tmp_path: Path,
+) -> None:
+    """When visualization collection succeeds, job completes successfully."""
+    job = {
+        "job_id": "job-viz-success",
+        "submission_id": "sub-1",
+        "entrypoint": "main.py",
+        "config_file": "config.yaml",
+    }
+
+    logs_root = tmp_path / "logs"
+    logs_root.mkdir(parents=True, exist_ok=True)
+    storage.logs_root = logs_root
+
+    output_dir = worker.artifacts_root / job["job_id"]
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "metrics.json").write_text(
+        '{"params": {"method": "padim"}, "metrics": {"auc": 0.95}}'
+    )
+
+    monkeypatch.setattr("src.worker.job_worker.subprocess.Popen", create_mock_popen())
+
+    mock_manifest = MagicMock()
+    mock_manifest.artifacts = ()
+    mock_manifest.total_images = 0
+
+    with (
+        patch("src.worker.job_worker.VisualizationConfig") as mock_config_cls,
+        patch("src.worker.job_worker.VisualizationCollector") as mock_collector_cls,
+    ):
+        mock_config = MagicMock()
+        mock_config.enabled = True
+        mock_config_cls.from_config_file.return_value = mock_config
+        mock_collector = MagicMock()
+        mock_collector.collect.return_value = mock_manifest
+        mock_collector_cls.return_value = mock_collector
+
+        worker.storage = storage
+        worker.status = status
+        worker.tracking = tracking
+        worker.queue = MagicMock()
+
+        run_id = worker.execute_job(job)
+
+    assert run_id == "run-123"
+    assert status.calls[-1][1] == JobStatus.COMPLETED
+    mock_collector.collect.assert_called_once_with(output_dir, mock_config)
+
+
+def test_visualization_collection_error_continues(
+    monkeypatch: Any,
+    worker: JobWorker,
+    status: DummyStatus,
+    storage: DummyStorage,
+    tracking: DummyTracking,
+    tmp_path: Path,
+) -> None:
+    """When VisualizationError is raised, job still completes (graceful degradation)."""
+    from src.worker.visualization_types import VisualizationError
+
+    job = {
+        "job_id": "job-viz-error",
+        "submission_id": "sub-1",
+        "entrypoint": "main.py",
+        "config_file": "config.yaml",
+    }
+
+    logs_root = tmp_path / "logs"
+    logs_root.mkdir(parents=True, exist_ok=True)
+    storage.logs_root = logs_root
+
+    output_dir = worker.artifacts_root / job["job_id"]
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "metrics.json").write_text(
+        '{"params": {"method": "padim"}, "metrics": {"auc": 0.95}}'
+    )
+
+    monkeypatch.setattr("src.worker.job_worker.subprocess.Popen", create_mock_popen())
+
+    with (
+        patch("src.worker.job_worker.VisualizationConfig") as mock_config_cls,
+        patch("src.worker.job_worker.VisualizationCollector") as mock_collector_cls,
+    ):
+        mock_config = MagicMock()
+        mock_config.enabled = True
+        mock_config_cls.from_config_file.return_value = mock_config
+        mock_collector = MagicMock()
+        mock_collector.collect.side_effect = VisualizationError("scan failed")
+        mock_collector_cls.return_value = mock_collector
+
+        worker.storage = storage
+        worker.status = status
+        worker.tracking = tracking
+        worker.queue = MagicMock()
+
+        run_id = worker.execute_job(job)
+
+    assert run_id == "run-123"
+    assert status.calls[-1][1] == JobStatus.COMPLETED
+
+
+def test_visualization_disabled_skips_collection(
+    monkeypatch: Any,
+    worker: JobWorker,
+    status: DummyStatus,
+    storage: DummyStorage,
+    tracking: DummyTracking,
+    tmp_path: Path,
+) -> None:
+    """When config has enabled=false, collection is skipped."""
+    job = {
+        "job_id": "job-viz-disabled",
+        "submission_id": "sub-1",
+        "entrypoint": "main.py",
+        "config_file": "config.yaml",
+    }
+
+    logs_root = tmp_path / "logs"
+    logs_root.mkdir(parents=True, exist_ok=True)
+    storage.logs_root = logs_root
+
+    output_dir = worker.artifacts_root / job["job_id"]
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "metrics.json").write_text(
+        '{"params": {"method": "padim"}, "metrics": {"auc": 0.95}}'
+    )
+
+    monkeypatch.setattr("src.worker.job_worker.subprocess.Popen", create_mock_popen())
+
+    with (
+        patch("src.worker.job_worker.VisualizationConfig") as mock_config_cls,
+        patch("src.worker.job_worker.VisualizationCollector") as mock_collector_cls,
+    ):
+        mock_config = MagicMock()
+        mock_config.enabled = False
+        mock_config_cls.from_config_file.return_value = mock_config
+
+        worker.storage = storage
+        worker.status = status
+        worker.tracking = tracking
+        worker.queue = MagicMock()
+
+        run_id = worker.execute_job(job)
+
+    assert run_id == "run-123"
+    assert status.calls[-1][1] == JobStatus.COMPLETED
+    mock_collector_cls.assert_not_called()
+
+
+def test_visualization_collection_called_after_subprocess(
+    monkeypatch: Any,
+    worker: JobWorker,
+    status: DummyStatus,
+    storage: DummyStorage,
+    tracking: DummyTracking,
+    tmp_path: Path,
+) -> None:
+    """Verify collection is called with correct arguments after subprocess."""
+    job = {
+        "job_id": "job-viz-order",
+        "submission_id": "sub-1",
+        "entrypoint": "main.py",
+        "config_file": "config.yaml",
+    }
+
+    logs_root = tmp_path / "logs"
+    logs_root.mkdir(parents=True, exist_ok=True)
+    storage.logs_root = logs_root
+
+    output_dir = worker.artifacts_root / job["job_id"]
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "metrics.json").write_text(
+        '{"params": {"method": "padim"}, "metrics": {"auc": 0.95}}'
+    )
+
+    monkeypatch.setattr("src.worker.job_worker.subprocess.Popen", create_mock_popen())
+
+    mock_manifest = MagicMock()
+    mock_manifest.artifacts = ()
+    mock_manifest.total_images = 0
+
+    config_path = tmp_path / "config.yaml"
+
+    with (
+        patch("src.worker.job_worker.VisualizationConfig") as mock_config_cls,
+        patch("src.worker.job_worker.VisualizationCollector") as mock_collector_cls,
+    ):
+        mock_config = MagicMock()
+        mock_config.enabled = True
+        mock_config_cls.from_config_file.return_value = mock_config
+        mock_collector = MagicMock()
+        mock_collector.collect.return_value = mock_manifest
+        mock_collector_cls.return_value = mock_collector
+
+        worker.storage = storage
+        worker.status = status
+        worker.tracking = tracking
+        worker.queue = MagicMock()
+
+        worker.execute_job(job)
+
+    mock_config_cls.from_config_file.assert_called_once_with(config_path)
+    mock_collector.collect.assert_called_once_with(output_dir, mock_config)
