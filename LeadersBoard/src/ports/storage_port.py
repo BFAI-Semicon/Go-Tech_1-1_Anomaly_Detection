@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
+from pathlib import Path
 from typing import BinaryIO
 
 
@@ -46,5 +47,37 @@ class StoragePort(ABC):
 
         Returns:
             ログ内容
+        """
+        ...
+
+    @abstractmethod
+    def list_artifacts(
+        self,
+        job_id: str,
+        subdir: str = "visualizations",
+    ) -> list[str]:
+        """アーティファクトファイル名一覧。
+
+        ディレクトリ未存在時は空リストを返す。
+        ジョブ存在チェックはJobStatusPort側で
+        行うため、本メソッドはFileNotFoundErrorを
+        送出しない。
+
+        Returns:
+            ファイル名のリスト（空リスト可）
+        """
+        ...
+
+    @abstractmethod
+    def load_artifact_file(
+        self,
+        job_id: str,
+        filepath: str,
+    ) -> Path:
+        """アーティファクトファイルの絶対パス。
+
+        Raises:
+            FileNotFoundError: 未存在時
+            ValueError: パストラバーサル時
         """
         ...

@@ -172,3 +172,42 @@ def test_fetch_job_logs_returns_empty_on_missing_logs_key(mock_get: MagicMock) -
     )
 
     assert result == ""
+
+
+@patch("src.streamlit.app.requests.get")
+def test_fetch_visualizations_returns_artifacts(mock_get: MagicMock) -> None:
+    mock_get.return_value.json.return_value = {
+        "job_id": "job-1",
+        "artifacts": [
+            {
+                "filename": "000_heatmap.png",
+                "artifact_type": "heatmap",
+                "url": "/jobs/job-1/visualizations/000_heatmap.png",
+            }
+        ],
+        "csv_files": ["image_predictions.csv"],
+    }
+    mock_get.return_value.status_code = 200
+    mock_get.return_value.raise_for_status = MagicMock()
+
+    result = streamlit_app.fetch_visualizations("http://api:8010", "token", "job-1")
+    assert len(result["artifacts"]) == 1
+    assert result["csv_files"] == ["image_predictions.csv"]
+
+
+@patch("src.streamlit.app.requests.get")
+def test_fetch_visualizations_returns_empty_on_404(mock_get: MagicMock) -> None:
+    mock_get.return_value.status_code = 404
+    result = streamlit_app.fetch_visualizations("http://api:8010", "token", "job-1")
+    assert result["artifacts"] == []
+    assert result["csv_files"] == []
+
+
+def test_build_mlflow_artifacts_link() -> None:
+    link = streamlit_app.build_mlflow_artifacts_link("http://mlflow:5010", "run-123")
+    assert link == "http://mlflow:5010/#/experiments/1/runs/run-123/artifacts"
+
+
+def test_build_mlflow_artifacts_link_trailing_slash() -> None:
+    link = streamlit_app.build_mlflow_artifacts_link("/mlflow/", "run-456")
+    assert link == "/mlflow/#/experiments/1/runs/run-456/artifacts"

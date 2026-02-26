@@ -6,12 +6,15 @@ import os
 import subprocess
 import threading
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from src.ports.job_queue_port import JobQueuePort
 from src.ports.job_status_port import JobStatus, JobStatusPort
 from src.ports.storage_port import StoragePort
 from src.ports.tracking_port import TrackingPort
+from src.worker.visualization_collector import VisualizationCollector
+from src.worker.visualization_config import VisualizationConfig
+from src.worker.visualization_types import VisualizationError, VisualizationManifest
 
 logger = logging.getLogger(__name__)
 
@@ -119,6 +122,8 @@ class JobWorker:
             # Load metrics.json and log to MLflow
             logger.info(f"Loading metrics from {output_dir}/metrics.json")
             metrics_data = self._load_metrics(output_dir)
+            config_path = submission_dir / config_file
+            self._collect_visualizations(output_dir, config_path)
             run_id = self._record_metrics(job_id, metrics_data, output_dir)
 
             logger.info(f"Job {job_id} completed successfully! MLflow run_id: {run_id}")
@@ -147,7 +152,7 @@ class JobWorker:
             ログファイルのパス（logs_rootが設定されていない場合はartifacts_root配下）
         """
         if hasattr(self.storage, "logs_root") and self.storage.logs_root:
-            return self.storage.logs_root / f"{job_id}.log"
+            return cast(Path, self.storage.logs_root / f"{job_id}.log")
         return self.artifacts_root / job_id / "training.log"
 
     def _execute_subprocess(
@@ -263,6 +268,29 @@ class JobWorker:
         else:
             logger.warning("Storage adapter does not have logs_root attribute")
 
+    def _collect_visualizations(
+        self,
+        output_dir: Path,
+        config_path: Path,
+    ) -> VisualizationManifest | None:
+        """可視化アーティファクトを収集する。エラー時はログ記録してNoneを返す。"""
+        try:
+            config = VisualizationConfig.from_config_file(config_path)
+            if not config.enabled:
+                logger.info("Visualization disabled by config")
+                return None
+            collector = VisualizationCollector()
+            manifest = collector.collect(output_dir, config)
+            logger.info(
+                "Collected %d visualization artifacts (%d images)",
+                len(manifest.artifacts),
+                manifest.total_images,
+            )
+            return manifest
+        except VisualizationError as exc:
+            logger.warning("Visualization collection failed: %s", exc)
+            return None
+
     def _load_metrics(self, output_dir: Path) -> dict[str, Any]:
         """Load metrics.json from output directory.
 
@@ -283,4 +311,4 @@ class JobWorker:
         if "params" not in data or "metrics" not in data:
             raise ValueError("metrics.json must contain 'params' and 'metrics' fields")
 
-        return data
+        return cast(dict[str, Any], data)

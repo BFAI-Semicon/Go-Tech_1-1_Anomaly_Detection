@@ -67,7 +67,9 @@ def integration_context(tmp_path: Path) -> IntegrationContext:
     submissions_root = tmp_path / "submissions"
     logs_root = tmp_path / "logs"
     artifacts_root = tmp_path / "artifacts"
-    storage = FileSystemStorageAdapter(submissions_root, logs_root=logs_root)
+    storage = FileSystemStorageAdapter(
+        submissions_root, logs_root=logs_root, artifacts_root=artifacts_root
+    )
     queue_adapter = RedisJobQueueAdapter(fake_redis)
     status_adapter = RedisJobStatusAdapter(fake_redis)
     rate_limit_adapter = RedisRateLimitAdapter(fake_redis)

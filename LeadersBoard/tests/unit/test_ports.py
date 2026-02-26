@@ -27,6 +27,12 @@ class InMemoryStorage(StoragePort):
     def load_logs(self, job_id):
         return "log"
 
+    def list_artifacts(self, job_id, subdir="visualizations"):
+        return []
+
+    def load_artifact_file(self, job_id, filepath):
+        raise NotImplementedError
+
 
 class InMemoryQueue(JobQueuePort):
     def enqueue(self, job_id, submission_id, entrypoint, config_file, config):

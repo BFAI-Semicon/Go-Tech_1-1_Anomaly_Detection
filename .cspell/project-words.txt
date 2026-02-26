@@ -2,6 +2,7 @@ abstractmethod
 addopts
 aiofiles
 alisson
+amap
 AnoDDPM
 Anom
 anomalib
@@ -10,6 +11,7 @@ appendonly
 appgroup
 appuser
 asyncio
+atype
 AUPR
 AUPRC
 AUROC
@@ -63,9 +65,11 @@ etal
 everysec
 extractall
 fakeredis
+farr
 fastapi
 FastFlow
 Francesco
+fromarray
 fullchain
 GANomaly
 getent
@@ -125,6 +129,8 @@ mlopsadmin
 MVTec
 mypy
 Neur
+newaxis
+nolimit
 noninteractive
 NOPASSWD
 nvcr
@@ -156,6 +162,7 @@ pymarkdownlnt
 pyproject
 pytest
 PYTHONPATH
+PYTHONUNBUFFERED
 pyupgrade
 pyyaml
 RD++
@@ -197,6 +204,7 @@ uvicorn
 VisA
 VisionAD
 ViT
+vtype
 WACV
 wandb
 wenbihan

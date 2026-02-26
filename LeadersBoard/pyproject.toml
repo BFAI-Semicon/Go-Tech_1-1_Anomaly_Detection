@@ -48,6 +48,7 @@ warn_unused_configs = true
 module = [
     "redis.*",
     "mlflow.*",
+    "yaml.*",
 ]
 ignore_missing_imports = true
 

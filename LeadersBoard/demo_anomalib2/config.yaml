@@ -47,4 +47,12 @@ metrics:
 
 threshold:
   method: adaptive
+visualization:
+  enabled: true
+  types:
+    - original
+    - heatmap
+    - mask
+    - overlay
+
 resource_class: nolimit

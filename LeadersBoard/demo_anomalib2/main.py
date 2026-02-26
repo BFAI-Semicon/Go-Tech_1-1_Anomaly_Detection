@@ -13,6 +13,7 @@ from anomalib.data import get_datamodule  # type: ignore[import]
 from anomalib.metrics import AUPR, AUROC, Evaluator, F1Score  # type: ignore[import]
 from anomalib.models import get_model  # type: ignore[import]
 from omegaconf import DictConfig, OmegaConf  # type: ignore[import]
+from visualize import save_visualization_artifacts
 
 from anomalib.trainers import get_trainer  # type: ignore[import]
 
@@ -21,10 +22,8 @@ LOGGER = logging.getLogger("demo_anomalib.padim")
 
 def resolve_paths(config_path: Path, output: Path, config: DictConfig) -> None:
     """Normalize dataset/output paths. Dataset path is specified in config.yaml."""
-    # Ensure class_path/init_args structure exists first
     ensure_data_class_path(config)
 
-    # Ensure dataset exists at the path specified in config
     if "init_args" in config.data and "root" in config.data.init_args:
         dataset_root = Path(config.data.init_args.root)
         _ensure_dataset_exists(dataset_root)
@@ -46,7 +45,7 @@ def ensure_data_class_path(config: DictConfig) -> None:
     dataset_name = str(config.data.get("name", "cifar10")).lower()
     mapping = {
         "cifar10": "anomalib.data.cifar10.CIFAR10",
-        "visa": "anomalib.data.Folder",  # Updated for anomalib v2.x
+        "visa": "anomalib.data.Folder",
     }
     if dataset_name not in mapping:
         raise ValueError(
@@ -61,12 +60,10 @@ def ensure_data_class_path(config: DictConfig) -> None:
             continue
         init_args[key] = value
 
-    # For folder-based datasets, map 'path' to 'root'
     if dataset_name == "visa":
         if "path" in init_args:
             init_args["root"] = init_args.pop("path")
     elif dataset_name == "cifar10":
-        # anomalib CIFAR10 expects 'root' instead of 'path'
         if "path" in init_args:
             init_args["root"] = init_args.pop("path")
 
@@ -84,13 +81,11 @@ def _ensure_dataset_exists(dataset_root: Path) -> None:
 
 def run_training(config: DictConfig, output_dir: Path) -> None:
     """Train and evaluate the Padim model defined in the config."""
-    # パフォーマンス測定用変数の初期化
-    performance_metrics = {}
+    performance_metrics: dict[str, float] = {}
 
-    # GPUメモリ初期状態の測定
     if torch.cuda.is_available():
         torch.cuda.reset_peak_memory_stats()
-        initial_memory = torch.cuda.memory_allocated() / 1024**2  # MB
+        initial_memory = torch.cuda.memory_allocated() / 1024**2
         LOGGER.info(f"Initial GPU memory: {initial_memory:.1f} MB")
         performance_metrics["initial_gpu_memory_mb"] = initial_memory
 
@@ -100,7 +95,7 @@ def run_training(config: DictConfig, output_dir: Path) -> None:
     model = get_model(config.model)
     trainer = get_trainer(config)
 
-    # 1.5. Evaluatorを明示的に設定（AUPRを含む）
+    # 1.5. Evaluator を明示的に設定（AUPR を含む）
     LOGGER.info("Setting up evaluator with AUPR metrics")
     evaluator = Evaluator(
         test_metrics=[
@@ -121,10 +116,9 @@ def run_training(config: DictConfig, output_dir: Path) -> None:
     performance_metrics["training_time_seconds"] = training_time
     LOGGER.info(f"Training completed in {training_time:.2f} seconds")
 
-    # 学習後のGPUメモリ測定
     if torch.cuda.is_available():
-        peak_memory = torch.cuda.max_memory_allocated() / 1024**2  # MB
-        current_memory = torch.cuda.memory_allocated() / 1024**2  # MB
+        peak_memory = torch.cuda.max_memory_allocated() / 1024**2
+        current_memory = torch.cuda.memory_allocated() / 1024**2
         performance_metrics["peak_gpu_memory_mb"] = peak_memory
         performance_metrics["final_gpu_memory_mb"] = current_memory
         LOGGER.info(f"Peak GPU memory: {peak_memory:.1f} MB")
@@ -132,8 +126,6 @@ def run_training(config: DictConfig, output_dir: Path) -> None:
 
     # 3. テストデータで評価
     LOGGER.info("Evaluating on test data")
-
-    # テストデータの数を取得（FPS計算用）
     test_dataloader = datamodule.test_dataloader()
     if hasattr(test_dataloader, "__len__"):
         num_test_samples = (
@@ -142,10 +134,7 @@ def run_training(config: DictConfig, output_dir: Path) -> None:
             else sum(len(batch) for batch in test_dataloader)
         )
     else:
-        # fallback: バッチ数をカウント
-        num_test_samples = sum(
-            len(batch[0]) for batch in test_dataloader
-        )  # assuming first element is input
+        num_test_samples = sum(len(batch[0]) for batch in test_dataloader)
 
     LOGGER.info(f"Test dataset size: {num_test_samples} samples")
 
@@ -156,7 +145,6 @@ def run_training(config: DictConfig, output_dir: Path) -> None:
     inference_time = inference_end_time - inference_start_time
     performance_metrics["inference_time_seconds"] = inference_time
 
-    # FPS計算
     if inference_time > 0 and num_test_samples > 0:
         fps = num_test_samples / inference_time
         performance_metrics["inference_fps"] = fps
@@ -166,9 +154,9 @@ def run_training(config: DictConfig, output_dir: Path) -> None:
         performance_metrics["inference_fps"] = 0.0
         LOGGER.warning("Unable to calculate FPS: invalid inference time or test samples")
 
-    # 4. メトリクスを抽出（anomalib 2.2.0 では test_results に含まれる）
+    # 4. メトリクスを抽出
     LOGGER.info(f"Raw test_results: {test_results}")
-    metrics = {}
+    metrics: dict[str, float] = {}
     if test_results and len(test_results) > 0:
         for key, value in test_results[0].items():
             LOGGER.info(f"Processing metric: {key} = {value} (type: {type(value)})")
@@ -202,6 +190,9 @@ def run_training(config: DictConfig, output_dir: Path) -> None:
         json.dump(metrics_data, f, indent=2)
     LOGGER.info(f"Metrics saved to {metrics_path}")
 
+    # 6. 可視化アーティファクトを生成（失敗してもメトリクスには影響しない）
+    save_visualization_artifacts(model, datamodule, trainer, output_dir)
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Anomalib Padim demo runner.")
@@ -219,7 +210,6 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    # ログファイルを設定
     log_file = args.output / "training.log"
     args.output.mkdir(parents=True, exist_ok=True)
 

@@ -32,6 +32,12 @@ class DummyStorage(StoragePort):
     def load_logs(self, job_id: str) -> str:
         raise NotImplementedError
 
+    def list_artifacts(self, job_id: str, subdir: str = "visualizations") -> list[str]:
+        return []
+
+    def load_artifact_file(self, job_id: str, filepath: str):
+        raise NotImplementedError
+
 
 def _create_file(contents: bytes) -> io.BytesIO:
     stream = io.BytesIO(contents)

@@ -4,6 +4,7 @@ from fastapi import FastAPI
 
 from src.api.jobs import router as jobs_router
 from src.api.submissions import router as submissions_router
+from src.api.visualizations import router as visualizations_router
 
 app = FastAPI(
     title="LeadersBoard API",
@@ -26,3 +27,4 @@ async def health() -> dict[str, str]:
 
 app.include_router(submissions_router)
 app.include_router(jobs_router)
+app.include_router(visualizations_router)
