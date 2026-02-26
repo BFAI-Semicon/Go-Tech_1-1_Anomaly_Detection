@@ -32,6 +32,7 @@ charliermarsh
 cifar
 ckpt
 CLAHE
+classmethod
 cloudflared
 Codabench
 csholmq
@@ -39,6 +40,8 @@ CUDA
 CutPaste
 CVPR
 Dalle
+dataclass
+dataclasses
 datamodule
 davidanson
 Davide
@@ -139,6 +142,7 @@ Peeples
 Pezze
 pipefail
 plotly
+Postconditions
 privkey
 PRO
 PromptAD
@@ -157,6 +161,7 @@ pyyaml
 RD++
 Real-IAD
 RegAD
+Reqs
 researchdata
 ResNet
 Retinex
@@ -165,6 +170,7 @@ SAA+
 Schlosser
 scikit
 segmentations
+selectbox
 semicon
 setuptools
 Shodan
