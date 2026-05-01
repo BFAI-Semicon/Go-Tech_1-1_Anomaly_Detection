@@ -3,6 +3,7 @@ __pycache__
 .DS_Store
 .env
 .mypy_cache
+*.html
 *.pdf
 *.zip
 nginx/auth/
