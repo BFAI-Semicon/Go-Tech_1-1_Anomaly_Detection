@@ -25,8 +25,10 @@ jobs:
         run: |
           set -euo pipefail
           sudo mkdir -p "${SHARED_DATA_DIR}"
-          # Set ownership to match APP_UID/APP_GID from prod.env
-          source /etc/leadersboard/prod.env
+          # Extract only APP_UID/APP_GID without sourcing the entire file
+          # (sourcing prod.env would override SHARED_DATA_DIR)
+          APP_UID=$(grep -m1 '^APP_UID=' /etc/leadersboard/prod.env | cut -d= -f2)
+          APP_GID=$(grep -m1 '^APP_GID=' /etc/leadersboard/prod.env | cut -d= -f2)
           sudo chown -R "${APP_UID}:${APP_GID}" "${SHARED_DATA_DIR}"
 
       - name: Verify htpasswd exists
@@ -42,8 +44,10 @@ jobs:
           set -euo pipefail
           test -f /etc/leadersboard/prod.env
           mkdir -p LeadersBoard
-          cp /etc/leadersboard/prod.env LeadersBoard/.env
-          # Add SHARED_DATA_DIR to .env for docker-compose
+          # Remove SHARED_DATA_DIR/NGINX_AUTH_DIR from prod.env to avoid
+          # duplicate keys (docker compose uses the first occurrence)
+          grep -vE '^(SHARED_DATA_DIR|NGINX_AUTH_DIR)=' /etc/leadersboard/prod.env \
+            > LeadersBoard/.env
           echo "SHARED_DATA_DIR=${SHARED_DATA_DIR}" >> LeadersBoard/.env
           echo "NGINX_AUTH_DIR=/etc/leadersboard/nginx/auth" >> LeadersBoard/.env
           chmod 600 LeadersBoard/.env
