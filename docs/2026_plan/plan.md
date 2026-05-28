@@ -2,7 +2,7 @@
 
 ## 全体方針
 
-前半は既存手法の深化、後半はViT（DINO / DINOv2 / MAE 等）を活用した欠陥検出手法調査を行う。
+前半は既存手法の深化、後半は自己教師あり学習（DINO / DINOv2 / MAE 等で事前学習した ViT を重み固定で活用）による欠陥検出手法調査を行う。
 
 - データ：前半MIIC, 後半独自データ
 - 評価：AUROC / AUPRC / F1 /（領域）IoU・PRO
@@ -47,9 +47,9 @@
 
 ---
 
-## 後半：Promptable Patch Retrieval
+## 後半：自己教師あり学習による Promptable Patch Retrieval
 
-`researches.md` に基づく、**学習なし（推論時適応）** の工程横断欠陥検出。
+`researches.md` に基づく、自己教師あり学習で獲得した ViT 表現を**重み固定のまま（推論時適応）** 用いる工程横断欠陥検出。
 
 ### 構成要素
 
