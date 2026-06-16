@@ -65,6 +65,7 @@ esbenp
 etal
 everysec
 extractall
+FAISS
 fakeredis
 farr
 fastapi
@@ -83,6 +84,7 @@ GLASS
 Go-Tech
 hasattr
 HGETALL
+HITL
 HSET
 htpasswd
 httpx
@@ -114,6 +116,7 @@ llen
 LOCO
 locustfile
 LOGNAME
+LOPO
 LPUSH
 markdowntabl
 marp
@@ -139,6 +142,7 @@ omegaconf
 Omniboard
 ONNX
 opencv
+Otsu
 outofmemory
 PaDiM
 passlib
@@ -153,6 +157,7 @@ Popen
 Postconditions
 privkey
 PRO
+Promptable
 PromptAD
 pycache
 pycodestyle
