@@ -37,6 +37,7 @@ CLAHE
 classmethod
 cloudflared
 Codabench
+coreset
 csholmq
 CUDA
 CutPaste
@@ -196,6 +197,7 @@ sPRO
 stcore
 STFPM
 Streamlit
+subsampling
 Susto
 takumii
 TensorRT

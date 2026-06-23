@@ -2,47 +2,51 @@
 
 ## 全体方針
 
-前半は既存手法の深化、後半は自己教師あり学習（DINO / DINOv2 / MAE 等で事前学習した ViT を重み固定で活用）による欠陥検出手法調査を行う。
+前半は PatchCore の蒸留による軽量化を主軸に既存手法を深化させ、後半は
+自己教師あり学習（DINO / DINOv2 / MAE 等で事前学習した ViT を重み固定で活用）
+による欠陥検出手法調査を行う。
 
 - データ：前半MIIC, 後半独自データ
 - 評価：AUROC / AUPRC / F1 /（領域）IoU・PRO
 
 ---
 
-## 前半：既存手法 × 前後処理 × アンサンブル
+## 前半：PatchCore 蒸留 ＋ 既存手法ベース整備
 
-2025年度調査（`Survey/research_plan.md`）の延長として、MIIC 上で
-教師なし異常検知の上限性能を特定する。
+中間報告（`docs/NITech_report.md`）の結論「PatchCore をベースにメモリ使用量を
+削減し推論速度を向上させる」を受け、PatchCore の蒸留検証を前半の主軸に据える。
 
-### 対象手法
+### PatchCore 蒸留検証（主軸）
 
-- PaDiM / PatchCore / FastFlow / CFlow / DFM / DFKDE
-- EfficientAD / DRAEM / AnomalyDINO / WinCLIP
+精度を維持したまま、PatchCore のメモリ使用量（メモリバンク）と
+推論速度のトレードオフを改善する。
 
-### 前処理
+- **教師**：MIIC で構築した PatchCore（メモリバンク ＋ kNN 異常スコア）
+- **生徒**：軽量 CNN / 小型バックボーン（メモリバンク不要の forward 推論）
+- **蒸留方式**：特徴蒸留（教師の patch 埋め込み回帰）／
+  異常マップ蒸留（教師の異常スコアマップ再現）
+- **検証軸**：coreset 率[^coreset]と精度の関係、生徒の FPS・GPU メモリ・精度の
+  トレードオフ、欠陥サイズ別（小/中/大）の精度劣化（中間報告 評価②に対応）
+- **目標**：AUROC を維持しつつ FPS 向上・GPU メモリ削減
+- **評価指標**：AUROC / AUPRC / F1 ＋ FPS・GPU メモリ
 
-- コントラスト補正（CLAHE / Retinex）
-- ノイズ除去（BM3D / NLM / Bilateral）
-- タイル化（サイズ・重複率）
-- 正規化（per-image / percentile clip）
+[^coreset]: coreset 率：PatchCore のメモリバンクに残す代表特徴の割合
+    （選択特徴数 / 全特徴数）。低いほどメモリ↓・速度↑だが精度低下のリスク↑。
 
-### 後処理
+### 既存手法 × 前後処理 × アンサンブル（補完）
 
-- ヒートマップ平滑化（Gaussian / Guided Filter）
-- 形態学処理（open/close / top-hat）
-- 閾値決定（Otsu / percentile / validation-based）
-- 連結成分フィルタ（サイズ・縦横比）
+蒸留の教師・比較対象として、MIIC 上の教師なし異常検知の上限性能を簡潔に押さえる。
 
-### アンサンブル
-
-- 異種手法の score-level fusion（PatchCore × FastFlow × DRAEM 等）
-- 平均 / 重み付き平均 / rank fusion / 学習型ゲート
-- 各手法の得意欠陥タイプを混同行列で分解
+- **対象手法**：PaDiM / PatchCore / FastFlow / CFlow / DFM / DFKDE ＋
+  EfficientAD / DRAEM / AnomalyDINO / WinCLIP
+- **前処理**：CLAHE/Retinex、BM3D/NLM/Bilateral、タイル化、正規化
+- **後処理**：ヒートマップ平滑化、形態学処理、閾値決定、連結成分フィルタ
+- **アンサンブル**：異種手法の score-level fusion（平均/重み付き/rank/学習型ゲート）
 
 ### 前半アウトプット
 
-- MIIC 上の教師なし異常検知のベースライン上限
-- 採用特徴抽出器・前後処理・融合方式の固定
+- PatchCore 蒸留モデル（軽量・高速版）と精度/速度/メモリのトレードオフ表
+- MIIC 上の教師なし異常検知のベースライン上限と採用構成（特徴抽出器・前後処理・融合）の固定
 - 残存する誤検出・見逃しの類型化（後半 Human in the loop (HITL) 入力）
 
 ---
@@ -90,7 +94,8 @@
 
 ## リスクと対策
 
-- **MIIC 異常 116 枚の統計不安定**：stratified k-fold + bootstrap CI
+- **MIIC 異常 116 枚の統計不安定**：正常分割の k-fold（全異常をテストで使用）
+  ＋ bootstrap 信頼区間 (Confidence Interval, CI)
 - **DINOv2 等のライセンス**：早期に法務確認
 - **LLM JSON 化の逸脱**：構造化出力 + スキーマ検証、失敗時の監査ログ
 - **事前学習ドメインギャップ**：MAE のドメイン適応／産業横断モデル（C-RADIOv2 等）を検討
