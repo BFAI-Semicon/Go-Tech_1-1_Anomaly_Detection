@@ -12,9 +12,6 @@
   "files.insertFinalNewline": true,
   "files.trimFinalNewlines": true,
   "files.eol": "\n",
-  "python.formatting.provider": "black",
-  "python.linting.enabled": true,
-  "python.linting.flake8Enabled": false,
   "[json]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
