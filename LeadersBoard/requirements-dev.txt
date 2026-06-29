@@ -26,3 +26,6 @@ debugpy>=1.8.0
 
 # Development Tools
 pre-commit>=4.0.0
+
+# Document Conversion
+markitdown[all]

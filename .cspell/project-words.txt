@@ -14,10 +14,12 @@ asyncio
 atype
 AUPR
 AUPRC
+AUPRO
 AUROC
 autouse
 Barusco
 bfai
+ＢＦＡＩ
 BGSAVE
 bierner
 Borsatti
@@ -25,6 +27,7 @@ BRPOP
 BTAD
 buildx
 Byungseok
+CAGR
 Censys
 CFA
 CFA+
@@ -57,6 +60,7 @@ DFKDE
 Dice
 DiffusionAD
 dotenv
+DPPM
 DRAEM
 eamodio
 EfficientAD
@@ -118,8 +122,10 @@ LOCO
 locustfile
 LOGNAME
 LOPO
+LPDDR
 LPUSH
 markdowntabl
+markitdown
 marp
 matplotlib
 maxfail
@@ -173,6 +179,7 @@ PYTHONPATH
 PYTHONUNBUFFERED
 pyupgrade
 pyyaml
+Rapidus
 RD++
 Real-IAD
 RegAD
@@ -191,6 +198,7 @@ setuptools
 Shodan
 shuworks
 SimpleNet
+SOTA
 SPADE
 SPIE
 sPRO
