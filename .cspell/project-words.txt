@@ -218,6 +218,7 @@ toolsai
 torchvision
 ulimits
 uvicorn
+VAND
 VisA
 VisionAD
 ViT
