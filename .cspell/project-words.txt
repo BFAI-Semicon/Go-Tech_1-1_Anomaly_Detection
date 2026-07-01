@@ -157,6 +157,7 @@ passwordless
 PatchCore
 pathlib
 Peeples
+Perlin
 Pezze
 pipefail
 plotly
